@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔢 Buscador de Números Primos — Criba Segmentada</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🔢 Criba Segmentada de Primos</h1>
+        <p class="subtitle">BigInt · Miller-Rabin · <span id="segmentSizeLabel">…</span></p>
+
+        <div class="controls">
+            <select id="modeSelect">
+                <option value="decimal">Índice decimal</option>
+                <option value="b64">Índice en Base64</option>
+                <option value="ab64">Valor del primo en Base64</option>
+            </select>
+            <input type="text" id="inputValue" placeholder="Ej: 1000000" autocomplete="off" spellcheck="false">
+            <button class="btn btn-primary" id="startBtn" onclick="startSearch()">🚀 Buscar</button>
+            <button class="btn btn-danger" id="cancelBtn" onclick="cancelSearch()" disabled>✖ Cancelar</button>
+        </div>
+
+        <div class="status-row">
+            <span id="statusBadge" class="status-badge idle">● En espera</span>
+            <span id="memoryInfo" class="memory-info"></span>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-info" id="progressInfo">
+                Seleccione el modo e ingrese el valor correspondiente.
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <h2>📊 Resultados</h2>
+            <div class="result-row">
+                <span class="result-label">Primo número (índice)</span>
+                <span class="result-value prime" id="resultIndex">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Valor decimal</span>
+                <span class="result-value prime" id="resultPrime">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Formato Base64</span>
+                <span class="result-value b64" id="resultBase64">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Tiempo de cálculo</span>
+                <span class="result-value" id="resultTime">—</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">Memoria estimada</span>
+                <span class="result-value" id="resultMem">—</span>
+            </div>
+        </div>
+
+        <!-- ============ SESIONES ============ -->
+        <div class="sessions-section">
+            <div class="sessions-header">
+                <h2>💾 Sesiones guardadas</h2>
+                <div class="sessions-header-actions">
+                    <button class="btn-ghost btn-ghost-accent" onclick="document.getElementById('importFileInput').click()">
+                        📂 Cargar sesión
+                    </button>
+                    <button class="btn-ghost" onclick="clearAllSessions()">🧹 Limpiar todo</button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
+            </div>
+            <div class="autosave-info" id="autosaveInfo">Guardado automático cada 60 s</div>
+            <div class="sessions-list" id="sessionsList"></div>
+        </div>
+
+        <p class="note" id="noteText">
+            ⚡ La criba segmentada procesa bloques de <span id="noteSegmentLabel">…</span>.
+            El test de Miller-Rabin usa 12 bases fijas para verificación determinista.
+            También puede buscar por índice en Base64 o valor del primo en Base64.
+            El progreso se guarda automáticamente cada 5 segundos en el navegador.
+            Si cierra la página con una búsqueda en curso, al volver a abrirla se le ofrecerá reanudarla directamente, sin exportar nada.
+            También puede reanudar cualquier sesión pausada desde la lista, exportar sesiones individuales o cargar un archivo JSON con sesiones previas.
+        </p>
+    </div>
+</body>
+</html>
