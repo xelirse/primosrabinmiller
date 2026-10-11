@@ -9,6 +9,7 @@ const MILLER_RABIN_BASES = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 3
 // --- Sesiones ---
 const AUTOSAVE_INTERVAL_MS = 60000;            // 1 minuto
 const SESSION_STORAGE_KEY = 'iprimo_sessions_v1';
+const ACTIVE_SESSION_KEY = 'iprimo_active_session';
 const MAX_SESSIONS = 20;
 const SESSION_FILE_VERSION = 1;
 
@@ -225,6 +226,7 @@ function sanitizeSession(raw) {
         inputValue,
         targetIndex: raw.targetIndex != null ? String(raw.targetIndex) : null,
         targetPrime: raw.targetPrime != null ? String(raw.targetPrime) : null,
+        primeIndex: raw.primeIndex != null ? String(raw.primeIndex) : null,
         status: ['running', 'paused', 'completed'].includes(raw.status) ? raw.status : 'paused',
         progress: typeof raw.progress === 'number' ? Math.min(100, Math.max(0, raw.progress)) : 0,
         low: raw.low != null ? String(raw.low) : '2',
@@ -371,8 +373,26 @@ function renderSessions() {
         const elapsed = (s.elapsedSeconds && s.elapsedSeconds > 0)
             ? `${s.elapsedSeconds.toFixed(1)}s` : '—';
         const updated = timeAgo(s.updatedAt || Date.now());
-        const canResume = s.status === 'paused' || s.status === 'completed';
-        const resumeLabel = s.status === 'completed' ? '🔁 Recalcular' : '▶ Reanudar';
+
+        // Determinar qué acciones mostrar
+        let actionsHtml = '';
+        if (s.status === 'completed') {
+            // Puede tener datos completos para "Cargar" (sin recalcular)
+            const hasCompleteData =
+                (s.mode !== 'ab64' && s.targetIndex && s.latestPrimeFound && s.latestPrimeFound !== '0') ||
+                (s.mode === 'ab64' && s.targetPrime && s.primeIndex);
+
+            if (hasCompleteData) {
+                actionsHtml += `<button class="session-btn load-btn" title="Cargar resultados guardados sin recalcular" onclick="loadSessionResults('${s.id}')">📋 Cargar</button>`;
+            }
+            actionsHtml += `<button class="session-btn resume-btn" title="Volver a calcular desde cero" onclick="resumeSession('${s.id}')">🔁 Recalcular</button>`;
+        } else if (s.status === 'paused') {
+            actionsHtml += `<button class="session-btn resume-btn" onclick="resumeSession('${s.id}')">▶ Reanudar</button>`;
+        }
+
+        actionsHtml += `<button class="session-btn export-btn" title="Exportar a JSON" onclick="exportSession('${s.id}')">⬇ Exportar</button>`;
+        actionsHtml += `<button class="session-btn delete-btn" title="Eliminar" onclick="deleteSessionById('${s.id}')">🗑</button>`;
+
         return `
             <div class="session-card" data-id="${s.id}">
                 <div class="session-top">
@@ -390,11 +410,7 @@ function renderSessions() {
                         <span>🕒 ${updated}</span>
                     </div>
                     <div class="session-actions">
-                        ${canResume
-                            ? `<button class="session-btn resume-btn" onclick="resumeSession('${s.id}')">${resumeLabel}</button>`
-                            : ''}
-                        <button class="session-btn export-btn" title="Exportar a JSON" onclick="exportSession('${s.id}')">⬇ Exportar</button>
-                        <button class="session-btn delete-btn" title="Eliminar" onclick="deleteSessionById('${s.id}')">🗑</button>
+                        ${actionsHtml}
                     </div>
                 </div>
             </div>
@@ -836,6 +852,58 @@ function refreshSegmentLabels() {
 }
 
 // ============================================================
+// CARGAR RESULTADOS YA CALCULADOS (sin recalcular)
+// ============================================================
+function loadSessionResults(id) {
+    if (isRunning) {
+        alert('Hay una búsqueda en curso. Espere o cancélela antes de cargar otra sesión.');
+        return;
+    }
+    const session = loadSessions().find(s => s.id === id);
+    if (!session) { alert('La sesión no existe.'); return; }
+    if (session.status !== 'completed') {
+        alert('Esta sesión no está completada todavía.');
+        return;
+    }
+
+    let primeIndex, primeValue;
+    if (session.mode === 'decimal' || session.mode === 'b64') {
+        // Al completar: latestPrimeFound = n-ésimo primo, targetIndex = índice
+        if (!session.latestPrimeFound || session.latestPrimeFound === '0' || !session.targetIndex) {
+            alert('La sesión no tiene resultados completos guardados.');
+            return;
+        }
+        primeIndex = BigInt(session.targetIndex);
+        primeValue = BigInt(session.latestPrimeFound);
+    } else {
+        // modo ab64: targetPrime = primo, primeIndex = índice encontrado
+        if (!session.targetPrime || !session.primeIndex) {
+            alert('Esta sesión fue completada antes de guardar el índice.\nUse «🔁 Recalcular» una vez para regenerarla.');
+            return;
+        }
+        primeValue = BigInt(session.targetPrime);
+        primeIndex = BigInt(session.primeIndex);
+    }
+
+    // Restaurar controles con los valores de la sesión
+    const modeSelect = document.getElementById('modeSelect');
+    const inputField  = document.getElementById('inputValue');
+    if (modeSelect) modeSelect.value = session.mode;
+    if (inputField)  inputField.value  = session.inputValue || '';
+
+    // Rehidratar la UI de resultados
+    const b64    = bigIntToBase64(primeValue);
+    const timeStr = `${(session.elapsedSeconds || 0).toFixed(2)} segundos`;
+    const memStr  = `~ ${formatBytes(session.memoryBytes || 0)}`;
+
+    showResults(primeIndex, primeValue, b64, timeStr, memStr);
+    updateStatus('completed', '✔ Completado (cargado)');
+    updateProgress(100,
+        `📋 Sesión cargada desde el historial<br>` +
+        `Primo nº ${primeIndex.toString()} = ${primeValue.toString()}`);
+}
+
+// ============================================================
 // MANEJADOR PRINCIPAL
 // ============================================================
 async function startSearch(resumeSessionObj = null) {
@@ -901,6 +969,7 @@ async function startSearch(resumeSessionObj = null) {
             inputValue,
             targetIndex: targetIndex !== null ? targetIndex.toString() : null,
             targetPrime: targetPrime !== null ? targetPrime.toString() : null,
+            primeIndex: null,
             status: 'running',
             progress: 0,
             low: '2',
@@ -969,6 +1038,7 @@ async function startSearch(resumeSessionObj = null) {
                     currentSession.progress = 100;
                     currentSession.updatedAt = Date.now();
                     currentSession.elapsedSeconds = result.elapsedSeconds;
+                    currentSession.primeIndex = result.primeIndex.toString();
                     upsertSession({ ...currentSession });
                 } else if (!cancelRequested) {
                     updateStatus('idle', '● En espera');
@@ -1107,6 +1177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.startSearch = startSearch;
 window.cancelSearch = cancelSearch;
 window.resumeSession = resumeSession;
+window.loadSessionResults = loadSessionResults;
 window.deleteSessionById = deleteSessionById;
 window.clearAllSessions = clearAllSessions;
 window.exportSession = exportSession;

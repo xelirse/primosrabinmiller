@@ -462,6 +462,21 @@ h1 {
     color: var(--red);
     background: rgba(248, 113, 113, 0.08);
 }
+
+/* ---- NUEVO: botón «📋 Cargar» (resultados guardados, sin recalcular) ---- */
+.session-card .session-btn.load-btn {
+    border-color: rgba(79, 140, 247, 0.5);
+    color: var(--accent);
+    background: rgba(79, 140, 247, 0.08);
+    font-weight: 700;
+}
+.session-card .session-btn.load-btn:hover {
+    border-color: var(--accent);
+    color: #fff;
+    background: rgba(79, 140, 247, 0.25);
+    box-shadow: 0 0 0 2px rgba(79, 140, 247, 0.15);
+}
+
 .session-empty {
     text-align: center;
     padding: 24px 12px;
@@ -481,7 +496,12 @@ h1 {
     .result-value { max-width: 55%; font-size: 0.8rem; }
     .sessions-section { padding: 14px 12px; }
     .session-card .session-bottom { flex-direction: column; align-items: flex-start; }
-    .session-card .session-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+    .session-card .session-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
     .sessions-header { flex-direction: column; align-items: stretch; }
     .sessions-header h2 { font-size: 1rem; }
     .sessions-header-actions { flex-direction: column; }
