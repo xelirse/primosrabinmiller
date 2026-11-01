@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔢 Buscador de Números Primos — Criba Segmentada</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
+    <script src="js/config.js"   defer></script>
+    <script src="js/notify.js"   defer></script>
+    <script src="js/math.js"     defer></script>
+    <script src="js/sessions.js" defer></script>
+    <script src="js/ui.js"       defer></script>
+    <script src="js/search.js"   defer></script>
+    <script src="js/app.js"      defer></script>
+    <script src="js/main.js"     defer></script>
 </head>
 <body>
     <div class="container">
@@ -16,6 +23,7 @@
             <select id="modeSelect">
                 <option value="decimal">Índice decimal</option>
                 <option value="b64">Índice en Base64</option>
+                <option value="adec">Valor del primo en Decimal</option>
                 <option value="ab64">Valor del primo en Base64</option>
             </select>
             <input type="text" id="inputValue" placeholder="Ej: 1000000" autocomplete="off" spellcheck="false">
@@ -39,25 +47,31 @@
 
         <div class="results-section" id="resultsSection">
             <h2>📊 Resultados</h2>
-            <div class="result-row">
-                <span class="result-label">Primo número (índice)</span>
-                <span class="result-value prime" id="resultIndex">—</span>
-            </div>
-            <div class="result-row">
-                <span class="result-label">Valor decimal</span>
-                <span class="result-value prime" id="resultPrime">—</span>
-            </div>
-            <div class="result-row">
-                <span class="result-label">Formato Base64</span>
-                <span class="result-value b64" id="resultBase64">—</span>
-            </div>
-            <div class="result-row">
-                <span class="result-label">Tiempo de cálculo</span>
-                <span class="result-value" id="resultTime">—</span>
-            </div>
-            <div class="result-row">
-                <span class="result-label">Memoria estimada</span>
-                <span class="result-value" id="resultMem">—</span>
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Primo número (índice)</div>
+                    <div class="result-value prime" id="resultIndex">—</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Primo número (índice) en Base64</div>
+                    <div class="result-value b64" id="resultIndexBase64">—</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Valor del primo en Decimal</div>
+                    <div class="result-value prime" id="resultPrime">—</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Valor del primo en Base64</div>
+                    <div class="result-value b64" id="resultBase64">—</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Tiempo de cálculo</div>
+                    <div class="result-value" id="resultTime">—</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Memoria estimada</div>
+                    <div class="result-value" id="resultMem">—</div>
+                </div>
             </div>
         </div>
 
@@ -78,13 +92,13 @@
         </div>
 
         <p class="note" id="noteText">
-            ⚡ La criba segmentada procesa bloques de <span id="noteSegmentLabel">…</span>.
-            El test de Miller-Rabin usa 12 bases fijas para verificación determinista.
-            También puede buscar por índice en Base64 o valor del primo en Base64.
-            El progreso se guarda automáticamente cada 5 segundos en el navegador.
-            Si cierra la página con una búsqueda en curso, al volver a abrirla se le ofrecerá reanudarla directamente, sin exportar nada.
-            También puede reanudar cualquier sesión pausada desde la lista, exportar sesiones individuales o cargar un archivo JSON con sesiones previas.
+            ⚡ Criba segmentada en bloques de <span id="noteSegmentLabel">…</span>.
+            Miller-Rabin con 12 bases fijas. Modos: índice decimal, índice Base64,
+            valor del primo en decimal o en Base64. Autoguardado cada 60 s; si cierra
+            la pestaña con una búsqueda activa, al volver se le ofrecerá reanudarla.
         </p>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>
