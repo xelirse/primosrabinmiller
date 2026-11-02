@@ -13,9 +13,12 @@ async function findNthPrime(targetIndex, resumeState = null) {
     const limitSqrt = BigInt(Math.floor(limitSqrtFloat));
 
     updateProgress(0, 'Generando primos base...');
+    
+    // Esta función ahora puede lanzar un Error si excede el límite de memoria
     st.basePrimesArray = generateBasePrimes(limitSqrt);
+    
     const basePrimesCount = st.basePrimesArray.length;
-    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString()} (hasta ${Number(limitSqrt).toLocaleString()})`);
+    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
 
     const segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
 
@@ -96,16 +99,23 @@ async function findNthPrime(targetIndex, resumeState = null) {
                 etaStr = formatDateTime(etaTime);
             }
 
+            // --- NUEVO FORMATO DE PROGRESO (FLEXBOX) ---
             const progressText = `
-                ${percentage.toFixed(2)}%<br>
-                ${ratioStr}<br>
-                P: ${latestPrimeFound.toString()}<br>
-                Est: ${estStr} ${estB64}<br>
-                ETA: ${etaStr}<br>
-                Seg: ${segmentNumber.toLocaleString()}<br><br>
-                Primos:<br>
-                ${count.toLocaleString()} /<br>
-                ${Number(targetIndex).toLocaleString()}
+                <div class="prog-row">
+                    <span class="prog-pct">${percentage.toFixed(2)}%</span>
+                    <span class="prog-ratio">${ratioStr}</span>
+                    <span class="prog-eta">ETA: ${etaStr}</span>
+                </div>
+                <div class="prog-row">
+                    <span><b>P:</b> ${latestPrimeFound.toString()}</span>
+                </div>
+                <div class="prog-row">
+                    <span><b>Est:</b> ${estStr} <span class="b64-text">${estB64}</span></span>
+                </div>
+                <div class="prog-row">
+                    <span><b>Seg:</b> ${segmentNumber.toLocaleString('es-ES')}</span>
+                    <span><b>Primos:</b> ${count.toLocaleString('es-ES')} / ${Number(targetIndex).toLocaleString('es-ES')}</span>
+                </div>
             `;
             updateProgress(percentage, progressText);
         }
@@ -153,9 +163,12 @@ async function findIndexByPrime(primeValue, resumeState = null) {
     const limitSqrt = BigInt(Math.floor(limitSqrtFloat));
 
     updateProgress(0, 'Generando primos base...');
+    
+    // Esta función ahora puede lanzar un Error si excede el límite de memoria
     st.basePrimesArray = generateBasePrimes(limitSqrt);
+    
     const basePrimesCount = st.basePrimesArray.length;
-    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString()} (hasta ${Number(limitSqrt).toLocaleString()})`);
+    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
 
     const segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
 
@@ -204,7 +217,7 @@ async function findIndexByPrime(primeValue, resumeState = null) {
             }
             count = c;
             if (found) {
-                updateProgress(100, `✅ Encontrado: primo nº ${primeIndex.toString()} (${primeValue.toString()})`);
+                updateProgress(100, `✅ Encontrado: primo nº ${primeIndex.toLocaleString('es-ES')} (${primeValue.toString()})`);
                 break;
             }
         } else {
@@ -236,15 +249,22 @@ async function findIndexByPrime(primeValue, resumeState = null) {
                 etaStr = formatDateTime(etaTime);
             }
 
+            // --- NUEVO FORMATO DE PROGRESO (FLEXBOX) ---
             const progressText = `
-                ${percentage.toFixed(2)}%<br>
-                ${ratioStr}<br>
-                Último: ${latestPrimeFound.toString()}<br>
-                Est: ${estStr} ${estB64}<br>
-                ETA: ${etaStr}<br><br>
-                Primos:<br>
-                ${count.toString()} /<br>
-                ${estimatedIndex.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                <div class="prog-row">
+                    <span class="prog-pct">${percentage.toFixed(2)}%</span>
+                    <span class="prog-ratio">${ratioStr}</span>
+                    <span class="prog-eta">ETA: ${etaStr}</span>
+                </div>
+                <div class="prog-row">
+                    <span><b>Último:</b> ${latestPrimeFound.toString()}</span>
+                </div>
+                <div class="prog-row">
+                    <span><b>Est:</b> ${estStr} <span class="b64-text">${estB64}</span></span>
+                </div>
+                <div class="prog-row">
+                    <span><b>Primos:</b> ${count.toLocaleString('es-ES')} / ${estimatedIndex.toLocaleString('es-ES', { maximumFractionDigits: 0 })}</span>
+                </div>
             `;
             updateProgress(percentage, progressText);
         }

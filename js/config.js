@@ -12,7 +12,8 @@ function CONST() {
             SESSION_STORAGE_KEY: 'iprimo_sessions_v1',
             ACTIVE_SESSION_KEY: 'iprimo_active_session',
             MAX_SESSIONS: 20,
-            SESSION_FILE_VERSION: 1
+            SESSION_FILE_VERSION: 1,
+            MAX_BASE_SIEVE_BYTES: 64 * 1024 * 1024 // 64 MB máximo para la criba base
         };
     }
     return CONST._v;
@@ -38,9 +39,11 @@ function estado() {
 // HELPERS DE FORMATO
 // ============================================================
 function formatBytes(bytes) {
-    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    return `${bytes} B`;
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
 
 function describeSegment() {
@@ -49,6 +52,6 @@ function describeSegment() {
 }
 
 function estimateMemory(basePrimesCount) {
-    const BASE_PRIME_BYTES = 32;
+    const BASE_PRIME_BYTES = 4; // Uint32Array ocupa 4 bytes por elemento
     return CONST().SEGMENT_SIZE_BYTES + basePrimesCount * BASE_PRIME_BYTES;
 }

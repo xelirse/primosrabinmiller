@@ -8,13 +8,14 @@ Una aplicación web de alto rendimiento orientada a la búsqueda y cálculo de n
 
 * **🚀 Cálculo Optimizado:** Implementa una **Criba Segmentada** para manejar la búsqueda por bloques, optimizando el uso de la memoria.
 * **🛡️ Verificación Determinista:** Utiliza el test de primalidad de **Miller-Rabin** con 12 bases fijas, garantizando una verificación rigurosa para números masivos.
+* **🧠 Límite de Memoria y Estimación (PNT):** Si ingresas un número que requiere más de **64 MB** de memoria para calcular los primos base, el navegador no colapsa. En su lugar, la app usa el **Teorema de los Números Primos** para calcular una estimación altamente precisa (tanto del valor del primo como de su índice) de forma instantánea.
 * **🔢 Soporte `BigInt`:** Capacidad para calcular y mostrar números que superan con creces los límites numéricos estándar de JavaScript.
 * **🔀 Cuatro Modos de Búsqueda:**
   * Por **Índice decimal** (ej. encontrar el primo número 1,000,000).
   * Por **Índice en Base64**.
   * Por **Valor del primo en Decimal**.
   * Por **Valor del primo en Base64**.
-* **📊 Resultados Completos:** Cada búsqueda muestra seis datos:
+* **📊 Resultados Completos:** Cada búsqueda muestra seis datos en un grid:
   * Primo número (índice) — decimal.
   * Primo número (índice) en Base64.
   * Valor del primo en Decimal.
@@ -32,9 +33,8 @@ Una aplicación web de alto rendimiento orientada a la búsqueda y cálculo de n
   * **Modal de confirmación** con soporte de teclado (`Enter` / `Escape`), botón de foco automático y cierre al hacer clic en el fondo.
 * **🎨 Interfaz Compacta:**
   * Resultados organizados en un grid adaptable de seis celdas.
+  * Bloque de progreso dinámico con formato en español (separadores de miles) y diseño flexible.
   * Tarjetas de sesión densas con barra de progreso, metadatos y acciones en línea.
-  * Diseño responsive que colapsa a una columna en pantallas pequeñas.
-* **📈 Monitorización en Tiempo Real:** Interfaz que muestra el progreso porcentual, ratio, estimación del siguiente primo, ETA, número de segmentos procesados, uso de memoria y estado de la aplicación.
 
 ## 🛠️ Tecnologías y Estructura
 
@@ -51,7 +51,7 @@ iprimo/
     ├── sessions.js   ← localStorage, importación / exportación JSON
     ├── ui.js         ← render de sesiones, progreso, resultados
     ├── search.js     ← findNthPrime, findIndexByPrime
-    ├── app.js        ← startSearch, cancelSearch, resumeSession
+    ├── app.js        ← startSearch, cancelSearch, estimaciones PNT
     └── main.js       ← programa() + llamada de arranque
 ```
 
@@ -60,18 +60,7 @@ iprimo/
 * **Sin variables globales:** las constantes viven en `CONST()` y el estado mutable en `estado()`, ambas con caché estático (`CONST._v`, `estado._v`).
 * **Solo declaraciones `function` a nivel superior:** nada de `const`/`let`/`var` sueltos. Esto permite que los `onclick="..."` del HTML sigan funcionando (las funciones declaradas en un script clásico son propiedades implícitas de `window`).
 * **Sin IIFE:** únicamente funciones con nombre + `programa();` al final de `main.js`.
-* **Orden de carga con `defer`:** los siete archivos se ejecutan en orden tras el parseo del HTML, garantizando que `programa()` encuentre el DOM listo y todas las funciones definidas.
-
-| Archivo | Depende de | Contiene |
-|---|---|---|
-| `config.js`   | —                       | `CONST`, `estado`, `formatBytes`, `describeSegment`, `estimateMemory` |
-| `notify.js`   | —                       | `notificar`, `confirmar` |
-| `math.js`     | config                  | BigInt ↔ Base64, `millerRabin`, `nextPrime`, `generateBasePrimes`, `sieveSegment` |
-| `sessions.js` | config, notify, ui      | `loadSessions`, `upsertSession`, importar / exportar |
-| `ui.js`       | config, math, sessions  | `renderSessions`, autosave, `showResults`, `updateProgress` |
-| `search.js`   | config, math, ui        | `findNthPrime`, `findIndexByPrime` |
-| `app.js`      | todo lo anterior        | `startSearch`, `cancelSearch`, `resumeSession`, recuperación |
-| `main.js`     | todo                    | `programa()` + `programa();` |
+* **Orden de carga con `defer`:** los ocho archivos se ejecutan en orden tras el parseo del HTML, garantizando que `programa()` encuentre el DOM listo y todas las funciones definidas.
 
 ## 🚀 Cómo usar
 
@@ -94,15 +83,17 @@ iprimo/
 | **Valor del primo en Decimal** | `15485863` | el índice de ese primo |
 | **Valor del primo en Base64** | `7sTHe` | el índice de ese primo |
 
-### Cargar sesiones ya completadas
-
-En la tarjeta de una sesión completada, el botón **📋 Cargar** rellena la sección de resultados con los valores guardados **sin recalcular nada**. El botón **🔁 Recalcular** vuelve a ejecutar la búsqueda desde cero.
+### Estimación para números gigantescos
+Si ingresas un número extremadamente grande (por ejemplo, `28785866289100396890228041`), la aplicación detectará que requiere más de 5 TB de RAM y detendrá la búsqueda de forma segura. En su lugar, mostrará una notificación y calculará una **estimación matemática** del resultado usando el Teorema de los Números Primos, conservando la precisión de los últimos dígitos y generando su respectiva representación en Base64.
 
 ## 🧠 Sobre los Algoritmos
 
-* **Criba Segmentada:** A diferencia de la Criba de Eratóstenes tradicional que requiere una enorme cantidad de memoria contigua, la versión segmentada divide el rango de búsqueda en bloques (segmentos) más pequeños que caben en la caché de la CPU, procesando el infinito paso a paso. Cada segmento cubre `4,190,208` bytes = `33,521,664` números.
-* **Miller-Rabin (12 bases):** Para asegurar que un número es primo de forma determinista (y no solo probabilística) en rangos altísimos, se aplica el test de Miller-Rabin utilizando un conjunto específico de 12 bases primas, una técnica demostrada matemáticamente para evitar falsos positivos (números pseudoprimos).
-* **Teorema de los Números Primos (PNT):** se usa para estimar el valor del siguiente primo, el índice esperado y el tiempo restante (ETA) mientras la criba avanza.
+* **Criba Segmentada:** A diferencia de la Criba de Eratóstenes tradicional que requiere una enorme cantidad de memoria contigua, la versión segmentada divide el rango de búsqueda en bloques (segmentos) más pequeños que caben en la caché de la CPU. Cada segmento cubre `4,190,208` bytes (aprox. 4 MB) = `33,521,664` números.
+* **Miller-Rabin (12 bases):** Para asegurar que un número es primo de forma determinista en rangos altísimos, se aplica el test de Miller-Rabin utilizando un conjunto específico de 12 bases primas, evitando falsos positivos.
+* **Optimización de RAM (`Uint32Array`):** Los primos base se almacenan en un `Uint32Array` en lugar de objetos `BigInt`, reduciendo el consumo de memoria hasta en un 80% y acelerando la criba.
+* **Teorema de los Números Primos (PNT):** Se usa de dos formas:
+  1. Para estimar el valor del siguiente primo, el índice esperado y el tiempo restante (ETA) mientras la criba avanza.
+  2. Como mecanismo de seguridad (Fallback) para dar un resultado aproximado cuando el número ingresado excede el límite de memoria seguro del navegador.
 
 ## 🔔 Notificaciones y confirmaciones
 
@@ -111,8 +102,8 @@ El proyecto evita deliberadamente los diálogos nativos del navegador (`alert`, 
 1. **No bloquean el hilo principal**, por lo que la búsqueda en curso no se congela mientras el usuario lee el mensaje.
 2. **Son personalizables** y coherentes con el tema oscuro de la aplicación.
 
-* **`notificar(mensaje, tipo, duración)`** → toast no bloqueante. Tipos: `'info'`, `'success'`, `'warn'`, `'error'`. Se apilan verticalmente y se cierran al hacer clic o automáticamente.
-* **`await confirmar(mensaje, { okText, cancelText })`** → modal bloqueante basado en `Promise`. Devuelve `true` / `false`. Admite `Enter` (aceptar), `Escape` (cancelar) y clic en el fondo (cancelar).
+* **`notificar(mensaje, tipo, duración)`** → toast no bloqueante. Tipos: `'info'`, `'success'`, `'warn'`, `'error'`.
+* **`await confirmar(mensaje, { okText, cancelText })`** → modal bloqueante basado en `Promise`. Devuelve `true` / `false`.
 
 ## 💾 Persistencia
 

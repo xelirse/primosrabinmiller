@@ -71,17 +71,44 @@ function nextPrime(n) {
 // Criba segmentada
 // ============================================================
 function generateBasePrimes(limitSqrt) {
-    const size = Number(limitSqrt) + 1;
-    const sieve = new Uint8Array(Math.floor(size / 8) + 1);
     const limitNum = Number(limitSqrt);
+    const sieveBytes = Math.floor(limitNum / 8) + 1;
+    const maxBytes = CONST().MAX_BASE_SIEVE_BYTES;
+
+    // Validación de memoria para evitar el colapso del navegador
+    if (sieveBytes > maxBytes) {
+        const maxLimit = Math.floor(maxBytes * 8);
+        const maxVal = maxLimit * maxLimit;
+        
+        // Formatear el número grande a notación científica más legible (ej: 2.88 × 10¹⁷)
+        const exp = Math.floor(Math.log10(maxVal));
+        const base = (maxVal / Math.pow(10, exp)).toFixed(2);
+        const maxValStr = `${base} × 10^${exp}`;
+
+        throw new Error(
+            `El valor ingresado es demasiado grande.\n\n` +
+            `Se requieren primos base hasta ${limitNum.toLocaleString()}, lo cual necesita ~${formatBytes(sieveBytes)} de memoria.\n` +
+            `El límite seguro de su navegador es de ${formatBytes(maxBytes)} (permite calcular hasta ~${maxValStr}).\n\n` +
+            `Intente con un número más pequeño.`
+        );
+    }
+
+    const sieve = new Uint8Array(sieveBytes);
     for (let p = 2; p * p <= limitNum; p++) {
         if (((sieve[p >> 3] >> (p & 7)) & 1) === 0) {
             for (let i = p * p; i <= limitNum; i += p) sieve[i >> 3] |= (1 << (i & 7));
         }
     }
-    const primes = [];
+
+    let count = 0;
     for (let p = 2; p <= limitNum; p++) {
-        if (((sieve[p >> 3] >> (p & 7)) & 1) === 0) primes.push(BigInt(p));
+        if (((sieve[p >> 3] >> (p & 7)) & 1) === 0) count++;
+    }
+
+    const primes = new Uint32Array(count);
+    let idx = 0;
+    for (let p = 2; p <= limitNum; p++) {
+        if (((sieve[p >> 3] >> (p & 7)) & 1) === 0) primes[idx++] = p;
     }
     return primes;
 }
@@ -91,9 +118,9 @@ function sieveSegment(low, high, basePrimes, segmentArray) {
     segmentArray.fill(0);
     const lowNum = Number(low);
     const highNum = Number(high);
+    
     for (let i = 0; i < basePrimes.length; i++) {
-        const pBig = basePrimes[i];
-        const pNum = Number(pBig);
+        const pNum = basePrimes[i]; // Es un Number nativo gracias al Uint32Array
         if (pNum * pNum > highNum) break;
         let firstMultiple = Math.floor(lowNum / pNum) * pNum;
         if (firstMultiple < lowNum) firstMultiple += pNum;
@@ -103,6 +130,7 @@ function sieveSegment(low, high, basePrimes, segmentArray) {
             segmentArray[idx >> 3] |= (1 << (idx & 7));
         }
     }
+    
     let count = 0n;
     let lastPrime = 0n;
     for (let i = 0; i < bits; i++) {

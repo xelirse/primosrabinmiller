@@ -570,3 +570,42 @@ h1 {
     .sessions-header-actions { flex-direction: column; }
     .btn-ghost { width: 100%; text-align: center; }
 }
+/* Ajustes para el bloque de progreso */
+.progress-info {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+    word-break: normal;
+    overflow-wrap: anywhere; /* Rompe números gigantes si es estrictamente necesario */
+}
+
+.prog-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+}
+.prog-row:last-child {
+    margin-bottom: 0;
+}
+.prog-row span {
+    white-space: nowrap; /* Evita que se partan las líneas a la mitad */
+}
+
+.prog-pct {
+    font-weight: bold;
+    color: var(--green);
+}
+.prog-ratio {
+    color: var(--text-dim);
+}
+.prog-eta {
+    color: var(--yellow);
+}
+.b64-text {
+    color: var(--yellow);
+    word-break: break-all;
+}

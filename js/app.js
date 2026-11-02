@@ -191,14 +191,56 @@ async function startSearch(resumeSessionObj = null) {
             }
         }
     } catch (err) {
-        updateStatus('idle', '● En espera');
-        updateProgress(0, `Error: ${err.message}`);
-        console.error(err);
-        notificar(`Error: ${err.message}`, 'error');
-        if (st.currentSession) {
-            st.currentSession.status = 'paused';
-            st.currentSession.updatedAt = Date.now();
-            upsertSession({ ...st.currentSession });
+        // --- Estimación con BigInt para preservar precisión en los últimos dígitos ---
+        if (err.message.includes('demasiado grande')) {
+            if (mode === 'decimal' || mode === 'b64') {
+                const nDouble = Number(targetIndex);
+                const lnN = Math.log(nDouble);
+                const lnLnN = Math.log(lnN);
+                const factor = lnN + lnLnN - 1;
+                
+                // Multiplicamos el factor por 1,000,000 para conservar 6 decimales de precisión y usamos BigInt
+                const factorScaled = BigInt(Math.round(factor * 1000000));
+                const estBigInt = (targetIndex * factorScaled) / 1000000n;
+
+                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB");
+                updateStatus('completed', '✔ Estimado (PNT)');
+                updateProgress(100,
+                    `⚠️ El índice es demasiado grande para calcularlo exactamente en tu navegador.\n` +
+                    `Se muestra el valor <b>estimado</b> usando el Teorema de los Números Primos.`
+                );
+                notificar('Límite de memoria excedido. Se usó el Teorema de los Números Primos para estimar el resultado.', 'warn', 6000);
+                if (st.currentSession) deleteSessionById(st.currentSession.id);
+                
+            } else {
+                const pDouble = Number(targetPrime);
+                const lnP = Math.log(pDouble);
+                
+                // Escalamiento para división precisa en BigInt
+                const lnPScaled = BigInt(Math.round(lnP * 1000000));
+                const estBigInt = (targetPrime * 1000000n) / lnPScaled;
+
+                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB");
+                updateStatus('completed', '✔ Estimado (PNT)');
+                updateProgress(100,
+                    `⚠️ El primo es demasiado grande para calcular su índice exacto en tu navegador.\n` +
+                    `Se muestra el índice <b>estimado</b> usando el Teorema de los Números Primos.`
+                );
+                notificar('Límite de memoria excedido. Se usó el Teorema de los Números Primos para estimar el índice.', 'warn', 6000);
+                if (st.currentSession) deleteSessionById(st.currentSession.id);
+            }
+        } else {
+            // Errores normales
+            updateStatus('idle', '● En espera');
+            updateProgress(0, `Error: ${err.message}`);
+            console.error(err);
+            notificar(`Error: ${err.message}`, 'error');
+            
+            if (st.currentSession) {
+                st.currentSession.status = 'paused';
+                st.currentSession.updatedAt = Date.now();
+                upsertSession({ ...st.currentSession });
+            }
         }
     } finally {
         st.isRunning = false;
