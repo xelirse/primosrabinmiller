@@ -14,6 +14,7 @@
     --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
     --sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -57,13 +58,14 @@ h1 {
 /* ---------- Controles ---------- */
 .controls {
     display: flex;
-    gap: 6px;
-    align-items: center;
     flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 10px;
 }
-.controls select,
-.controls input {
+
+/* Los selectores se reparten el ancho de la fila superior */
+.controls select {
+    flex: 1 1 140px;
     padding: 7px 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -74,14 +76,37 @@ h1 {
     outline: none;
     transition: border-color 0.2s;
 }
+
+/* La fila inferior (input + botones) ocupa el 100% del ancho */
+.input-row {
+    display: flex;
+    flex: 1 1 100%; /* Fuerza el salto de línea */
+    gap: 8px;
+    align-items: center;
+}
+
+/* El input se expande para llenar todo el espacio disponible */
+.input-row input {
+    flex: 1;
+    min-width: 140px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
 .controls select:focus,
-.controls input:focus {
+.input-row input:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(79, 140, 247, 0.15);
 }
-.controls select { flex: 0 0 auto; }
-.controls input  { flex: 1; min-width: 120px; }
 
+/* Botones */
 .btn {
     padding: 8px 14px;
     border-radius: 8px;
@@ -93,6 +118,7 @@ h1 {
     letter-spacing: 0.2px;
     white-space: nowrap;
     font-family: var(--sans);
+    flex: 0 0 auto; /* No se estiran, mantienen su tamaño */
 }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover:not(:disabled) {
@@ -154,9 +180,27 @@ h1 {
     font-family: var(--mono);
     font-size: 0.72rem;
     color: var(--text-dim);
-    line-height: 1.5;
-    word-break: break-all;
+    line-height: 1.6;
+    word-break: normal;
+    overflow-wrap: anywhere;
 }
+
+/* Ajustes para el bloque de progreso */
+.prog-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 3px;
+}
+.prog-row:last-child { margin-bottom: 0; }
+.prog-row span { white-space: nowrap; }
+
+.prog-pct { font-weight: bold; color: var(--green); }
+.prog-ratio { color: var(--text-dim); }
+.prog-eta { color: var(--yellow); }
+.b64-text { color: var(--yellow); word-break: break-all; white-space: normal !important; }
 
 /* ---------- Resultados (grid compacto) ---------- */
 .results-section {
@@ -215,6 +259,7 @@ h1 {
 .result-value.prime { color: var(--green); }
 .result-value.b64 { color: var(--yellow); }
 
+/* ---------- Badges de estado ---------- */
 .status-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -553,10 +598,18 @@ h1 {
 /* ============================================================
    RESPONSIVE
    ============================================================ */
-@media (max-width: 560px) {
+@media (max-width: 600px) {
     .container { padding: 14px 12px; }
+    
     .controls { flex-direction: column; align-items: stretch; }
-    .btn { width: 100%; }
+    .controls select { flex: 1 1 auto; }
+    
+    .input-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .input-row .btn { width: 100%; }
+    
     .results-grid { grid-template-columns: 1fr; }
     .sessions-section { padding: 8px 10px; }
     .session-card .session-bottom { flex-direction: column; align-items: flex-start; }
@@ -569,43 +622,6 @@ h1 {
     .sessions-header { flex-direction: column; align-items: stretch; }
     .sessions-header-actions { flex-direction: column; }
     .btn-ghost { width: 100%; text-align: center; }
-}
-/* Ajustes para el bloque de progreso */
-.progress-info {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    line-height: 1.6;
-    word-break: normal;
-    overflow-wrap: anywhere; /* Rompe números gigantes si es estrictamente necesario */
-}
-
-.prog-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 3px;
-}
-.prog-row:last-child {
-    margin-bottom: 0;
-}
-.prog-row span {
-    white-space: nowrap; /* Evita que se partan las líneas a la mitad */
-}
-
-.prog-pct {
-    font-weight: bold;
-    color: var(--green);
-}
-.prog-ratio {
-    color: var(--text-dim);
-}
-.prog-eta {
-    color: var(--yellow);
-}
-.b64-text {
-    color: var(--yellow);
-    word-break: break-all;
+    
+    .prog-row { flex-direction: column; align-items: flex-start; gap: 2px; }
 }

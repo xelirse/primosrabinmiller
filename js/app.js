@@ -53,17 +53,20 @@ async function startSearch(resumeSessionObj = null) {
     if (st.isRunning) return;
 
     const modeSelect = document.getElementById('modeSelect');
+    const algSelect = document.getElementById('algorithmSelect');
     const inputField = document.getElementById('inputValue');
 
-    let mode, inputValue;
+    let mode, algorithm, inputValue;
     let targetIndex = null;
     let targetPrime = null;
     let resumeState = null;
 
     if (resumeSessionObj) {
         mode = resumeSessionObj.mode;
+        algorithm = resumeSessionObj.algorithm || 'exact';
         inputValue = resumeSessionObj.inputValue || '';
         modeSelect.value = mode;
+        if(algSelect) algSelect.value = algorithm;
         inputField.value = inputValue;
 
         if (mode === 'decimal' || mode === 'b64') {
@@ -81,6 +84,7 @@ async function startSearch(resumeSessionObj = null) {
         st.currentSession = { ...resumeSessionObj, status: 'running', updatedAt: Date.now() };
     } else {
         mode = modeSelect.value;
+        algorithm = algSelect ? algSelect.value : 'exact';
         inputValue = inputField.value.trim();
 
         if (inputValue === '') { notificar('Por favor, ingrese un valor.', 'warn'); return; }
@@ -106,6 +110,7 @@ async function startSearch(resumeSessionObj = null) {
         st.currentSession = {
             id: `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             mode,
+            algorithm,
             inputValue,
             targetIndex: targetIndex !== null ? targetIndex.toString() : null,
             targetPrime: targetPrime !== null ? targetPrime.toString() : null,
@@ -128,21 +133,72 @@ async function startSearch(resumeSessionObj = null) {
     st.cancelRequested = false;
     hideResults();
     setButtonsEnabled(false, true);
-    updateStatus('running', '● Buscando...');
-    updateProgress(0, 'Inicializando búsqueda...');
+    updateStatus('running', '● Calculando...');
+    updateProgress(0, 'Inicializando...');
     refreshSegmentLabels();
     startAutosave();
     upsertSession({ ...st.currentSession });
 
     try {
-        if (mode === 'decimal' || mode === 'b64') {
+        const isIndexMode = mode === 'decimal' || mode === 'b64';
+
+        // --- LÓGICA PARA APROXIMACIONES DIRECTAS (PNT o RIEMANN) ---
+        if (algorithm !== 'exact') {
+            let estBigInt;
+            const algName = algorithm === 'riemann' ? 'Riemann R' : 'PNT';
+            
+            if (isIndexMode) {
+                if (algorithm === 'riemann') {
+                    estBigInt = riemannRInverse(targetIndex);
+                } else {
+                    const nDouble = Number(targetIndex);
+                    const lnN = Math.log(nDouble);
+                    const lnLnN = Math.log(lnN);
+                    const factorScaled = BigInt(Math.round((lnN + lnLnN - 1) * 1000000));
+                    estBigInt = (targetIndex * factorScaled) / 1000000n;
+                }
+                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algName);
+            } else {
+                if (algorithm === 'riemann') {
+                    estBigInt = riemannR(targetPrime);
+                } else {
+                    const pDouble = Number(targetPrime);
+                    const lnP = Math.log(pDouble);
+                    const lnPScaled = BigInt(Math.round(lnP * 1000000));
+                    estBigInt = (targetPrime * 1000000n) / lnPScaled;
+                }
+                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algName);
+            }
+            
+            updateStatus('completed', `✔ Estimado (${algName})`);
+            updateProgress(100,
+                `<b>Método:</b> ${algName}<br>` +
+                `⚠️ Se usó la aproximación <b>${algName}</b>.<br>` +
+                `Los últimos dígitos pueden diferir del valor real.`
+            );
+
+            st.currentSession.status = 'completed';
+            st.currentSession.progress = 100;
+            st.currentSession.updatedAt = Date.now();
+            if (isIndexMode) st.currentSession.latestPrimeFound = estBigInt.toString();
+            else st.currentSession.primeIndex = estBigInt.toString();
+            upsertSession({ ...st.currentSession });
+            
+            notificar(`✅ Estimación (${algName}) completada y guardada.`, 'success', 3000);
+            return; // Terminamos la ejecución aquí, sin pasar por la criba
+        }
+
+        // --- LÓGICA PARA CRIBA EXACTA ---
+        const algExact = 'Criba Exacta';
+
+        if (isIndexMode) {
             const result = await findNthPrime(targetIndex, resumeState);
             if (result && result.nthPrime > 0n) {
                 const timeStr = `${result.elapsedSeconds.toFixed(2)} segundos`;
                 const memStr = `~ ${formatBytes(result.memoryBytes)}`;
-                showResults(targetIndex, result.nthPrime, timeStr, memStr);
+                showResults(targetIndex, result.nthPrime, timeStr, memStr, algExact);
                 updateStatus('completed', '✔ Completado');
-                updateProgress(100, `✅ Primo nº ${targetIndex.toString()} = ${result.nthPrime.toString()}`);
+                updateProgress(100, `<b>Método:</b> ${algExact}<br>✅ Primo nº ${targetIndex.toString()} = ${result.nthPrime.toString()}`);
 
                 st.currentSession.status = 'completed';
                 st.currentSession.progress = 100;
@@ -159,7 +215,6 @@ async function startSearch(resumeSessionObj = null) {
                 upsertSession({ ...st.currentSession });
             }
         } else {
-            // Modos de valor de primo: 'adec' y 'ab64'
             if (!millerRabin(targetPrime, 12)) {
                 notificar('El número proporcionado no es primo.', 'error');
                 updateStatus('idle', '● En espera');
@@ -170,9 +225,9 @@ async function startSearch(resumeSessionObj = null) {
                 if (result && result.primeIndex > 0n) {
                     const timeStr = `${result.elapsedSeconds.toFixed(2)} segundos`;
                     const memStr = `~ ${formatBytes(result.memoryBytes)}`;
-                    showResults(result.primeIndex, targetPrime, timeStr, memStr);
+                    showResults(result.primeIndex, targetPrime, timeStr, memStr, algExact);
                     updateStatus('completed', '✔ Completado');
-                    updateProgress(100, `✅ El primo ${targetPrime.toString()} es el nº ${result.primeIndex.toString()}`);
+                    updateProgress(100, `<b>Método:</b> ${algExact}<br>✅ El primo ${targetPrime.toString()} es el nº ${result.primeIndex.toString()}`);
 
                     st.currentSession.status = 'completed';
                     st.currentSession.progress = 100;
@@ -191,51 +246,49 @@ async function startSearch(resumeSessionObj = null) {
             }
         }
     } catch (err) {
-        // --- Estimación con BigInt para preservar precisión en los últimos dígitos ---
+        // --- FALLBACK: Si la Criba Exacta falla por falta de memoria ---
         if (err.message.includes('demasiado grande')) {
-            if (mode === 'decimal' || mode === 'b64') {
+            const isIndexMode = mode === 'decimal' || mode === 'b64';
+            const algFallback = 'PNT (Fallback)';
+            
+            if (isIndexMode) {
                 const nDouble = Number(targetIndex);
                 const lnN = Math.log(nDouble);
                 const lnLnN = Math.log(lnN);
-                const factor = lnN + lnLnN - 1;
-                
-                // Multiplicamos el factor por 1,000,000 para conservar 6 decimales de precisión y usamos BigInt
-                const factorScaled = BigInt(Math.round(factor * 1000000));
+                const factorScaled = BigInt(Math.round((lnN + lnLnN - 1) * 1000000));
                 const estBigInt = (targetIndex * factorScaled) / 1000000n;
 
-                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB");
+                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');
-                updateProgress(100,
-                    `⚠️ El índice es demasiado grande para calcularlo exactamente en tu navegador.\n` +
-                    `Se muestra el valor <b>estimado</b> usando el Teorema de los Números Primos.`
-                );
-                notificar('Límite de memoria excedido. Se usó el Teorema de los Números Primos para estimar el resultado.', 'warn', 6000);
-                if (st.currentSession) deleteSessionById(st.currentSession.id);
+                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT para estimar.`);
                 
+                st.currentSession.status = 'completed';
+                st.currentSession.progress = 100;
+                st.currentSession.latestPrimeFound = estBigInt.toString();
+                upsertSession({ ...st.currentSession });
+                notificar('Límite excedido. Estimación PNT guardada en sesiones.', 'warn', 6000);
             } else {
                 const pDouble = Number(targetPrime);
                 const lnP = Math.log(pDouble);
-                
-                // Escalamiento para división precisa en BigInt
                 const lnPScaled = BigInt(Math.round(lnP * 1000000));
                 const estBigInt = (targetPrime * 1000000n) / lnPScaled;
 
-                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB");
+                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');
-                updateProgress(100,
-                    `⚠️ El primo es demasiado grande para calcular su índice exacto en tu navegador.\n` +
-                    `Se muestra el índice <b>estimado</b> usando el Teorema de los Números Primos.`
-                );
-                notificar('Límite de memoria excedido. Se usó el Teorema de los Números Primos para estimar el índice.', 'warn', 6000);
-                if (st.currentSession) deleteSessionById(st.currentSession.id);
+                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT para estimar.`);
+                
+                st.currentSession.status = 'completed';
+                st.currentSession.progress = 100;
+                st.currentSession.primeIndex = estBigInt.toString();
+                upsertSession({ ...st.currentSession });
+                notificar('Límite excedido. Estimación PNT guardada en sesiones.', 'warn', 6000);
             }
         } else {
-            // Errores normales
+            // Otros errores
             updateStatus('idle', '● En espera');
             updateProgress(0, `Error: ${err.message}`);
             console.error(err);
             notificar(`Error: ${err.message}`, 'error');
-            
             if (st.currentSession) {
                 st.currentSession.status = 'paused';
                 st.currentSession.updatedAt = Date.now();

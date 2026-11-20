@@ -36,6 +36,10 @@ function renderSessions() {
             : s.mode === 'b64' ? 'Índice B64'
             : s.mode === 'adec' ? 'Primo dec'
             : 'Primo B64';
+        
+        // NUEVO: Etiqueta del método/algoritmo
+        const algLabel = s.algorithm === 'pnt' ? 'PNT' : s.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
+        
         const raw = s.inputValue || '';
         const valueDisplay = raw.length > 44 ? raw.slice(0, 22) + '…' + raw.slice(-18) : raw;
         const elapsed = (s.elapsedSeconds && s.elapsedSeconds > 0)
@@ -70,6 +74,7 @@ function renderSessions() {
                 </div>
                 <div class="session-bottom">
                     <div class="session-meta">
+                        <span>⚙ ${algLabel}</span>
                         <span>${progress.toFixed(2)}%</span>
                         <span>⏱ ${elapsed}</span>
                         <span>🕒 ${updated}</span>
@@ -153,14 +158,15 @@ function updateStatus(status, text) {
     }
 }
 
-// Nueva firma: calcula ambas representaciones Base64 internamente
-function showResults(primeIndex, primeValue, timeStr, memStr) {
+// NUEVO: Se añade el parámetro algName para mostrarlo en los resultados
+function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba Exacta') {
     const section = document.getElementById('resultsSection');
     if (section) section.classList.add('visible');
     const set = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
     };
+    set('resultAlgorithm', algName);
     set('resultIndex', primeIndex.toString());
     set('resultIndexBase64', bigIntToBase64(primeIndex));
     set('resultPrime', primeValue.toString());
@@ -231,12 +237,15 @@ function loadSessionResults(id) {
     if (modeSelect) modeSelect.value = session.mode;
     if (inputField)  inputField.value  = session.inputValue || '';
 
+    // NUEVO: Recuperar el nombre del algoritmo
+    const algLabel = session.algorithm === 'pnt' ? 'PNT' : session.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
     const timeStr = `${(session.elapsedSeconds || 0).toFixed(2)} segundos`;
     const memStr  = `~ ${formatBytes(session.memoryBytes || 0)}`;
 
-    showResults(primeIndex, primeValue, timeStr, memStr);
+    showResults(primeIndex, primeValue, timeStr, memStr, algLabel);
     updateStatus('completed', '✔ Completado (cargado)');
     updateProgress(100,
         `📋 Sesión cargada desde el historial<br>` +
+        `<b>Método:</b> ${algLabel}<br>` +
         `Primo nº ${primeIndex.toString()} = ${primeValue.toString()}`);
 }

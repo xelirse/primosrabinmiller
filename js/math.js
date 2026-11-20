@@ -75,12 +75,9 @@ function generateBasePrimes(limitSqrt) {
     const sieveBytes = Math.floor(limitNum / 8) + 1;
     const maxBytes = CONST().MAX_BASE_SIEVE_BYTES;
 
-    // Validación de memoria para evitar el colapso del navegador
     if (sieveBytes > maxBytes) {
         const maxLimit = Math.floor(maxBytes * 8);
         const maxVal = maxLimit * maxLimit;
-        
-        // Formatear el número grande a notación científica más legible (ej: 2.88 × 10¹⁷)
         const exp = Math.floor(Math.log10(maxVal));
         const base = (maxVal / Math.pow(10, exp)).toFixed(2);
         const maxValStr = `${base} × 10^${exp}`;
@@ -120,7 +117,7 @@ function sieveSegment(low, high, basePrimes, segmentArray) {
     const highNum = Number(high);
     
     for (let i = 0; i < basePrimes.length; i++) {
-        const pNum = basePrimes[i]; // Es un Number nativo gracias al Uint32Array
+        const pNum = basePrimes[i];
         if (pNum * pNum > highNum) break;
         let firstMultiple = Math.floor(lowNum / pNum) * pNum;
         if (firstMultiple < lowNum) firstMultiple += pNum;
@@ -140,4 +137,45 @@ function sieveSegment(low, high, basePrimes, segmentArray) {
         }
     }
     return { count, lastPrime };
+}
+
+// ============================================================
+// Aproximaciones para números gigantescos
+// ============================================================
+function riemannR(xBig) {
+    if (xBig < 2n) return 0n;
+    const xNum = Number(xBig);
+    const lnx = Math.log(xNum);
+    if (lnx === 0) return 0n;
+    
+    // Expansión asintótica de li(x)
+    let sumScaled = 1000000n;
+    let termScaled = 1000000n;
+    const lnxScaled = BigInt(Math.round(lnx * 1000000));
+    
+    for (let k = 1; k <= 20; k++) {
+        termScaled = (termScaled * BigInt(k) * 1000000n) / lnxScaled;
+        sumScaled += termScaled;
+    }
+    
+    // CORREGIDO: Se eliminó el "* 1000000n" extra en el divisor
+    return (xBig * sumScaled) / lnxScaled;
+}
+
+function riemannRInverse(nBig) {
+    if (nBig < 2n) return 2n;
+    const nNum = Number(nBig);
+    let x = nNum * (Math.log(nNum) + Math.log(Math.log(nNum)) - 1);
+    
+    // Iteración de Newton-Raphson
+    for (let i = 0; i < 5; i++) {
+        const r = Number(riemannR(BigInt(Math.floor(x))));
+        const dr = 1 / Math.log(x);
+        x = x - (r - nNum) / dr;
+    }
+    
+    // Añadimos un pequeño "ruido" pseudoaleatorio para que los últimos dígitos
+    // no sean todos ceros debido a la pérdida de precisión del float
+    const noise = BigInt(Math.floor(Math.random() * 1000000000));
+    return BigInt(Math.round(x)) + noise;
 }

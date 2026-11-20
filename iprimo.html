@@ -26,9 +26,17 @@
                 <option value="adec">Valor del primo en Decimal</option>
                 <option value="ab64">Valor del primo en Base64</option>
             </select>
-            <input type="text" id="inputValue" placeholder="Ej: 1000000" autocomplete="off" spellcheck="false">
-            <button class="btn btn-primary" id="startBtn" onclick="startSearch()">🚀 Buscar</button>
-            <button class="btn btn-danger" id="cancelBtn" onclick="cancelSearch()" disabled>✖ Cancelar</button>
+            <select id="algorithmSelect">
+                <option value="exact">Criba Exacta</option>
+                <option value="pnt">Aprox. PNT</option>
+                <option value="riemann">Aprox. Riemann R</option>
+            </select>
+            
+            <div class="input-row">
+                <input type="text" id="inputValue" placeholder="Ej: 1000000" autocomplete="off" spellcheck="false">
+                <button class="btn btn-primary" id="startBtn" onclick="startSearch()">🚀 Buscar</button>
+                <button class="btn btn-danger" id="cancelBtn" onclick="cancelSearch()" disabled>✖ Cancelar</button>
+            </div>
         </div>
 
         <div class="status-row">
@@ -48,6 +56,10 @@
         <div class="results-section" id="resultsSection">
             <h2>📊 Resultados</h2>
             <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Método / Algoritmo</div>
+                    <div class="result-value" id="resultAlgorithm">—</div>
+                </div>
                 <div class="result-item">
                     <div class="result-label">Primo número (índice)</div>
                     <div class="result-value prime" id="resultIndex">—</div>

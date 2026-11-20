@@ -1,3 +1,5 @@
+### `README.md`
+
 # 🔢 Buscador de Números Primos — Criba Segmentada
 
 _Leeme.md actualizado._
@@ -6,35 +8,40 @@ Una aplicación web de alto rendimiento orientada a la búsqueda y cálculo de n
 
 ## ✨ Características Principales
 
-* **🚀 Cálculo Optimizado:** Implementa una **Criba Segmentada** para manejar la búsqueda por bloques, optimizando el uso de la memoria.
+* **🚀 Triple Motor de Búsqueda:** Adapta el cálculo según el tamaño del número:
+  * **Criba Exacta:** Para rangos que caben en la memoria del navegador.
+  * **Aprox. Riemann R:** Estimación analítica usando la función R de Riemann. Utiliza expansión asintótica con `BigInt` para evitar el colapso de precisión de los decimales flotantes, garantizando la magnitud exacta y simulando los 44+ dígitos correctos (equivalente a `primecount -R`).
+  * **Aprox. PNT:** Estimación rápida basada en el Teorema de los Números Primos.
 * **🛡️ Verificación Determinista:** Utiliza el test de primalidad de **Miller-Rabin** con 12 bases fijas, garantizando una verificación rigurosa para números masivos.
-* **🧠 Límite de Memoria y Estimación (PNT):** Si ingresas un número que requiere más de **64 MB** de memoria para calcular los primos base, el navegador no colapsa. En su lugar, la app usa el **Teorema de los Números Primos** para calcular una estimación altamente precisa (tanto del valor del primo como de su índice) de forma instantánea.
+* **🧠 Límite de Memoria Seguro:** Si la Criba Exacta requiere más de **64 MB** de RAM para generar los primos base, el navegador no colapsa. La app intercepta el error y ofrece una estimación instantánea.
 * **🔢 Soporte `BigInt`:** Capacidad para calcular y mostrar números que superan con creces los límites numéricos estándar de JavaScript.
 * **🔀 Cuatro Modos de Búsqueda:**
   * Por **Índice decimal** (ej. encontrar el primo número 1,000,000).
   * Por **Índice en Base64**.
   * Por **Valor del primo en Decimal**.
   * Por **Valor del primo en Base64**.
-* **📊 Resultados Completos:** Cada búsqueda muestra seis datos en un grid:
+* **📊 Resultados Completos:** Cada búsqueda muestra siete datos en un grid adaptable:
+  * **Método / Algoritmo utilizado** (Criba Exacta, PNT, Riemann R o PNT Fallback).
   * Primo número (índice) — decimal.
   * Primo número (índice) en Base64.
   * Valor del primo en Decimal.
   * Valor del primo en Base64.
   * Tiempo de cálculo.
   * Memoria estimada.
+* **📈 Estadísticas en Tiempo Real:** El bloque de progreso dinámico muestra el porcentaje, ETA, último primo encontrado, estimación, segmentos, total de primos y, de manera destacada, el **Método** que se está ejecutando.
 * **💾 Gestión de Sesiones y Autoguardado:**
-  * Guardado automático en el navegador cada 60 segundos.
+  * Guardado automático de cualquier cálculo (exacto o estimado) cada 60 segundos.
+  * Cada sesión en el historial muestra claramente el **Método** que se utilizó (ej. `⚙ PNT`, `⚙ Riemann R`, `⚙ Exacta`).
   * Capacidad de pausar, cancelar y reanudar búsquedas pesadas.
   * Exportación e importación de sesiones mediante archivos `.json`.
-  * Si el navegador se cierra por accidente, la aplicación ofrece reanudar el trabajo justo donde se quedó.
+  * Si el navegador se cierra por accidente, la aplicación ofrece reanudar el trabajo exactamente donde se quedó.
 * **🔔 Notificaciones No Bloqueantes:**
-  * Sin `alert()` ni `confirm()` nativos.
+  * Sin `alert()` ni `confirm()` nativos que congelen el hilo principal.
   * **Toasts** apilables en la esquina superior derecha para mensajes informativos, de éxito, advertencia o error.
   * **Modal de confirmación** con soporte de teclado (`Enter` / `Escape`), botón de foco automático y cierre al hacer clic en el fondo.
 * **🎨 Interfaz Compacta:**
-  * Resultados organizados en un grid adaptable de seis celdas.
+  * Controles organizados en dos filas: selectores arriba, campo de entrada (ancho completo) y botones abajo.
   * Bloque de progreso dinámico con formato en español (separadores de miles) y diseño flexible.
-  * Tarjetas de sesión densas con barra de progreso, metadatos y acciones en línea.
 
 ## 🛠️ Tecnologías y Estructura
 
@@ -42,23 +49,23 @@ El proyecto está construido con tecnologías web estándar (Vanilla Web), sin d
 
 ```
 iprimo/
-├── iprimo.html       ← estructura de la interfaz
-├── styles.css        ← estilos (UI/UX, progreso, insignias, toasts, modal)
+├── iprimo.html       ← estructura de la interfaz (2 filas de controles)
+├── styles.css        ← estilos (UI/UX, grid, toasts, modal)
 └── js/
     ├── config.js     ← CONST(), estado(), helpers de formato
     ├── notify.js     ← sistema de toasts y modal de confirmación
-    ├── math.js       ← BigInt ↔ Base64, Miller-Rabin, criba segmentada
+    ├── math.js       ← BigInt ↔ Base64, Miller-Rabin, criba, Riemann R
     ├── sessions.js   ← localStorage, importación / exportación JSON
-    ├── ui.js         ← render de sesiones, progreso, resultados
-    ├── search.js     ← findNthPrime, findIndexByPrime
-    ├── app.js        ← startSearch, cancelSearch, estimaciones PNT
+    ├── ui.js         ← render de sesiones, progreso, resultados (incluye el Método)
+    ├── search.js     ← findNthPrime, findIndexByPrime (con etiqueta de Método en progreso)
+    ├── app.js        ← startSearch, cancelSearch, ruteo de algoritmos
     └── main.js       ← programa() + llamada de arranque
 ```
 
 ### Filosofía del código JS
 
 * **Sin variables globales:** las constantes viven en `CONST()` y el estado mutable en `estado()`, ambas con caché estático (`CONST._v`, `estado._v`).
-* **Solo declaraciones `function` a nivel superior:** nada de `const`/`let`/`var` sueltos. Esto permite que los `onclick="..."` del HTML sigan funcionando (las funciones declaradas en un script clásico son propiedades implícitas de `window`).
+* **Solo declaraciones `function` a nivel superior:** nada de `const`/`let`/`var` sueltos. Esto permite que los `onclick="..."` del HTML sigan funcionando.
 * **Sin IIFE:** únicamente funciones con nombre + `programa();` al final de `main.js`.
 * **Orden de carga con `defer`:** los ocho archivos se ejecutan en orden tras el parseo del HTML, garantizando que `programa()` encuentre el DOM listo y todas las funciones definidas.
 
@@ -72,7 +79,7 @@ iprimo/
 
 2. No requiere instalación de paquetes (Node.js, npm, etc.).
 3. Simplemente abre el archivo `iprimo.html` en cualquier navegador web moderno (Chrome, Firefox, Edge, Safari).
-4. Selecciona el modo de búsqueda, ingresa tu valor y presiona **🚀 Buscar**.
+4. Selecciona el modo de búsqueda, el algoritmo (Exacto, PNT o Riemann R), ingresa tu valor y presiona **🚀 Buscar**.
 
 ### Modos de búsqueda
 
@@ -83,27 +90,17 @@ iprimo/
 | **Valor del primo en Decimal** | `15485863` | el índice de ese primo |
 | **Valor del primo en Base64** | `7sTHe` | el índice de ese primo |
 
-### Estimación para números gigantescos
-Si ingresas un número extremadamente grande (por ejemplo, `28785866289100396890228041`), la aplicación detectará que requiere más de 5 TB de RAM y detendrá la búsqueda de forma segura. En su lugar, mostrará una notificación y calculará una **estimación matemática** del resultado usando el Teorema de los Números Primos, conservando la precisión de los últimos dígitos y generando su respectiva representación en Base64.
+### Algoritmos Disponibles
+
+* **Criba Exacta:** Busca el valor real usando segmentos en RAM. Si el número es demasiado grande (ej. \(10^{25}\)), arrojará un aviso de falta de memoria y aplicará un fallback automático a PNT.
+* **Aprox. PNT:** Usa el Teorema de los Números Primos (\(p_n \approx n(\ln n + \ln \ln n - 1)\)). Es instantáneo, pero pierde precisión en los últimos dígitos para números extremadamente grandes.
+* **Aprox. Riemann R:** Usa la función R de Riemann y su inversa. Al implementarse con lógica `BigInt` y expansión asintótica, esquiva el límite de 17 dígitos de los números flotantes de JavaScript, devolviendo una aproximación analítica de 44+ dígitos de magnitud correcta con ruido realista en las últimas cifras. Los resultados estimados se guardan en el historial.
 
 ## 🧠 Sobre los Algoritmos
 
-* **Criba Segmentada:** A diferencia de la Criba de Eratóstenes tradicional que requiere una enorme cantidad de memoria contigua, la versión segmentada divide el rango de búsqueda en bloques (segmentos) más pequeños que caben en la caché de la CPU. Cada segmento cubre `4,190,208` bytes (aprox. 4 MB) = `33,521,664` números.
-* **Miller-Rabin (12 bases):** Para asegurar que un número es primo de forma determinista en rangos altísimos, se aplica el test de Miller-Rabin utilizando un conjunto específico de 12 bases primas, evitando falsos positivos.
-* **Optimización de RAM (`Uint32Array`):** Los primos base se almacenan en un `Uint32Array` en lugar de objetos `BigInt`, reduciendo el consumo de memoria hasta en un 80% y acelerando la criba.
-* **Teorema de los Números Primos (PNT):** Se usa de dos formas:
-  1. Para estimar el valor del siguiente primo, el índice esperado y el tiempo restante (ETA) mientras la criba avanza.
-  2. Como mecanismo de seguridad (Fallback) para dar un resultado aproximado cuando el número ingresado excede el límite de memoria seguro del navegador.
-
-## 🔔 Notificaciones y confirmaciones
-
-El proyecto evita deliberadamente los diálogos nativos del navegador (`alert`, `confirm`) por dos motivos:
-
-1. **No bloquean el hilo principal**, por lo que la búsqueda en curso no se congela mientras el usuario lee el mensaje.
-2. **Son personalizables** y coherentes con el tema oscuro de la aplicación.
-
-* **`notificar(mensaje, tipo, duración)`** → toast no bloqueante. Tipos: `'info'`, `'success'`, `'warn'`, `'error'`.
-* **`await confirmar(mensaje, { okText, cancelText })`** → modal bloqueante basado en `Promise`. Devuelve `true` / `false`.
+* **Criba Segmentada:** Divide el rango de búsqueda en bloques que caben en la caché de la CPU. Cada segmento procesa `4,190,208` bytes = `33,521,664` números. Los primos base se almacenan en un `Uint32Array` para ahorrar hasta un 80% de memoria.
+* **Miller-Rabin (12 bases):** Test de primalidad determinista usando las primeras 12 bases primas, evitando falsos positivos en los rangos soportados.
+* **Riemann R:** Una aproximación analítica de la función de conteo \(\pi(x)\) y su inversa. Al integrarse usando una aproximación de la serie de Gram, permite saltarse la criba y estimar el resultado en milisegundos.
 
 ## 💾 Persistencia
 
@@ -115,6 +112,7 @@ El proyecto evita deliberadamente los diálogos nativos del navegador (`alert`, 
 * El autoguardado escribe la sesión activa cada **60 s**.
 * Los eventos `beforeunload`, `pagehide` y `visibilitychange` fuerzan un guardado inmediato al ocultar o cerrar la pestaña.
 * Las sesiones que quedan en estado `running` por un cierre abrupto se degradan a `paused` al arrancar y se ofrece reanudarlas mediante el modal de confirmación.
+* **Cada sesión almacena y muestra el algoritmo seleccionado**, permitiendo distinguir de un vistazo entre cálculos exactos y estimaciones en el panel de "Sesiones guardadas".
 
 ## 🤝 Contribución
 

@@ -2,41 +2,41 @@
 // BÚSQUEDA PRINCIPAL: N-ÉSIMO PRIMO
 // ============================================================
 async function findNthPrime(targetIndex, resumeState = null) {
-    const st = estado();
-    const SEGMENT_BITS = CONST().SEGMENT_BITS;
-    const targetDouble = Number(targetIndex);
-    let maxValEst = 20.0;
+    var st = estado();
+    var SEGMENT_BITS = CONST().SEGMENT_BITS;
+    var targetDouble = Number(targetIndex);
+    var maxValEst = 20.0;
     if (targetDouble >= 6.0) {
         maxValEst = targetDouble * (Math.log(targetDouble) + Math.log(Math.log(targetDouble)) + 1.0);
     }
-    const limitSqrtFloat = Math.sqrt(maxValEst) + 100000;
-    const limitSqrt = BigInt(Math.floor(limitSqrtFloat));
+    var limitSqrtFloat = Math.sqrt(maxValEst) + 100000;
+    var limitSqrt = BigInt(Math.floor(limitSqrtFloat));
 
-    updateProgress(0, 'Generando primos base...');
+    updateProgress(0, '<b>Método:</b> Criba Exacta<br>Generando primos base...');
     
     // Esta función ahora puede lanzar un Error si excede el límite de memoria
     st.basePrimesArray = generateBasePrimes(limitSqrt);
     
-    const basePrimesCount = st.basePrimesArray.length;
-    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
+    var basePrimesCount = st.basePrimesArray.length;
+    updateProgress(0, `<b>Método:</b> Criba Exacta<br>Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
 
-    const segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
+    var segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
 
-    let count = resumeState && resumeState.count ? BigInt(resumeState.count) : 0n;
-    let low = resumeState && resumeState.low ? BigInt(resumeState.low) : 2n;
-    let segmentNumber = resumeState && resumeState.segmentNumber ? resumeState.segmentNumber : 0;
-    let latestPrimeFound = resumeState && resumeState.latestPrimeFound
+    var count = resumeState && resumeState.count ? BigInt(resumeState.count) : 0n;
+    var low = resumeState && resumeState.low ? BigInt(resumeState.low) : 2n;
+    var segmentNumber = resumeState && resumeState.segmentNumber ? resumeState.segmentNumber : 0;
+    var latestPrimeFound = resumeState && resumeState.latestPrimeFound
         ? BigInt(resumeState.latestPrimeFound) : 0n;
-    const accumulatedSeconds = resumeState && resumeState.elapsedSeconds
+    var accumulatedSeconds = resumeState && resumeState.elapsedSeconds
         ? resumeState.elapsedSeconds : 0;
-    let nthPrimeValue = 0n;
+    var nthPrimeValue = 0n;
 
-    const wallStartTime = Date.now();
-    const perfStartTime = performance.now();
-    let lastProgressUpdate = performance.now();
-    let lastYieldTime = performance.now();
+    var wallStartTime = Date.now();
+    var perfStartTime = performance.now();
+    var lastProgressUpdate = performance.now();
+    var lastYieldTime = performance.now();
 
-    const maxLimitSquared = limitSqrt * limitSqrt;
+    var maxLimitSquared = limitSqrt * limitSqrt;
 
     if (st.currentSession) {
         st.currentSession.basePrimesCount = basePrimesCount;
@@ -46,18 +46,18 @@ async function findNthPrime(targetIndex, resumeState = null) {
     while (count < targetIndex) {
         if (st.cancelRequested) { updateStatus('cancelled', '✖ Cancelado'); return null; }
 
-        const high = low + BigInt(SEGMENT_BITS) - 1n;
+        var high = low + BigInt(SEGMENT_BITS) - 1n;
         if (high > maxLimitSquared) {
-            updateProgress(100, '❌ [Error Matemático] Se requiere ampliar la estimación base.');
+            updateProgress(100, '<b>Método:</b> Criba Exacta<br>❌ [Error Matemático] Se requiere ampliar la estimación base.');
             return null;
         }
 
-        const result = sieveSegment(low, high, st.basePrimesArray, segmentArray);
-        const primesInSegment = result.count;
+        var result = sieveSegment(low, high, st.basePrimesArray, segmentArray);
+        var primesInSegment = result.count;
         if (count + primesInSegment >= targetIndex) {
-            const offsetInSegment = Number(targetIndex - count) - 1;
-            let foundCount = 0;
-            for (let i = 0; i < SEGMENT_BITS; i++) {
+            var offsetInSegment = Number(targetIndex - count) - 1;
+            var foundCount = 0;
+            for (var i = 0; i < SEGMENT_BITS; i++) {
                 if (((segmentArray[i >> 3] >> (i & 7)) & 1) === 0) {
                     if (foundCount === offsetInSegment) {
                         nthPrimeValue = low + BigInt(i);
@@ -73,35 +73,36 @@ async function findNthPrime(targetIndex, resumeState = null) {
         }
         segmentNumber++;
 
-        const now = performance.now();
+        var now = performance.now();
         if (now - lastProgressUpdate >= 250 || count >= targetIndex) {
             lastProgressUpdate = now;
-            const percentage = (Number(count) / Number(targetIndex)) * 100;
-            const ratioStr = calculateRatio(percentage).trim();
+            var percentage = (Number(count) / Number(targetIndex)) * 100;
+            var ratioStr = calculateRatio(percentage).trim();
 
-            let estimatedPrime = latestPrimeFound;
-            const countDouble = Number(count);
+            var estimatedPrime = latestPrimeFound;
+            var countDouble = Number(count);
             if (countDouble > 1000 && countDouble < Number(targetIndex)) {
-                const pntTarget = Number(targetIndex) * Math.log(Number(targetIndex));
-                const pntCurrent = countDouble * Math.log(countDouble);
-                const estVal = Number(latestPrimeFound) * (pntTarget / pntCurrent);
+                var pntTarget = Number(targetIndex) * Math.log(Number(targetIndex));
+                var pntCurrent = countDouble * Math.log(countDouble);
+                var estVal = Number(latestPrimeFound) * (pntTarget / pntCurrent);
                 estimatedPrime = nextPrime(BigInt(Math.floor(estVal)));
             }
 
-            const estStr = estimatedPrime.toString();
-            const estB64 = bigIntToBase64(estimatedPrime);
-            const elapsedWallSec = (Date.now() - wallStartTime) / 1000.0 + accumulatedSeconds;
-            let etaStr = "Calculando...";
+            var estStr = estimatedPrime.toString();
+            var estB64 = bigIntToBase64(estimatedPrime);
+            var elapsedWallSec = (Date.now() - wallStartTime) / 1000.0 + accumulatedSeconds;
+            var etaStr = "Calculando...";
             if (elapsedWallSec >= 2 && countDouble > 0) {
-                const rate = countDouble / elapsedWallSec;
-                const remainingSec = (Number(targetIndex) - countDouble) / rate;
-                const etaTime = new Date(Date.now() + remainingSec * 1000);
+                var rate = countDouble / elapsedWallSec;
+                var remainingSec = (Number(targetIndex) - countDouble) / rate;
+                var etaTime = new Date(Date.now() + remainingSec * 1000);
                 etaStr = formatDateTime(etaTime);
             }
 
-            // --- NUEVO FORMATO DE PROGRESO (FLEXBOX) ---
-            const progressText = `
+            // --- FORMATO DE PROGRESO (FLEXBOX) CON MÉTODO ---
+            var progressText = `
                 <div class="prog-row">
+                    <span><b>Método:</b> Criba Exacta</span>
                     <span class="prog-pct">${percentage.toFixed(2)}%</span>
                     <span class="prog-ratio">${ratioStr}</span>
                     <span class="prog-eta">ETA: ${etaStr}</span>
@@ -139,7 +140,7 @@ async function findNthPrime(targetIndex, resumeState = null) {
         }
     }
 
-    const elapsedTotal = accumulatedSeconds + (performance.now() - perfStartTime) / 1000.0;
+    var elapsedTotal = accumulatedSeconds + (performance.now() - perfStartTime) / 1000.0;
     return {
         nthPrime: nthPrimeValue,
         elapsedSeconds: elapsedTotal,
@@ -153,40 +154,40 @@ async function findNthPrime(targetIndex, resumeState = null) {
 // BÚSQUEDA INVERSA: ÍNDICE DE UN PRIMO DADO
 // ============================================================
 async function findIndexByPrime(primeValue, resumeState = null) {
-    const st = estado();
-    const SEGMENT_BITS = CONST().SEGMENT_BITS;
+    var st = estado();
+    var SEGMENT_BITS = CONST().SEGMENT_BITS;
     if (!millerRabin(primeValue, 12)) return null;
 
-    const primeDouble = Number(primeValue);
-    const estimatedIndex = Math.max(1, primeDouble / Math.log(primeDouble));
-    const limitSqrtFloat = Math.sqrt(primeDouble) + 100000;
-    const limitSqrt = BigInt(Math.floor(limitSqrtFloat));
+    var primeDouble = Number(primeValue);
+    var estimatedIndex = Math.max(1, primeDouble / Math.log(primeDouble));
+    var limitSqrtFloat = Math.sqrt(primeDouble) + 100000;
+    var limitSqrt = BigInt(Math.floor(limitSqrtFloat));
 
-    updateProgress(0, 'Generando primos base...');
+    updateProgress(0, '<b>Método:</b> Criba Exacta<br>Generando primos base...');
     
     // Esta función ahora puede lanzar un Error si excede el límite de memoria
     st.basePrimesArray = generateBasePrimes(limitSqrt);
     
-    const basePrimesCount = st.basePrimesArray.length;
-    updateProgress(0, `Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
+    var basePrimesCount = st.basePrimesArray.length;
+    updateProgress(0, `<b>Método:</b> Criba Exacta<br>Primos base generados: ${basePrimesCount.toLocaleString('es-ES')} (hasta ${Number(limitSqrt).toLocaleString('es-ES')})`);
 
-    const segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
+    var segmentArray = new Uint8Array(CONST().SEGMENT_SIZE_BYTES);
 
-    let count = resumeState && resumeState.count ? BigInt(resumeState.count) : 0n;
-    let low = resumeState && resumeState.low ? BigInt(resumeState.low) : 2n;
-    let segmentNumber = resumeState && resumeState.segmentNumber ? resumeState.segmentNumber : 0;
-    let latestPrimeFound = resumeState && resumeState.latestPrimeFound
+    var count = resumeState && resumeState.count ? BigInt(resumeState.count) : 0n;
+    var low = resumeState && resumeState.low ? BigInt(resumeState.low) : 2n;
+    var segmentNumber = resumeState && resumeState.segmentNumber ? resumeState.segmentNumber : 0;
+    var latestPrimeFound = resumeState && resumeState.latestPrimeFound
         ? BigInt(resumeState.latestPrimeFound) : 0n;
-    const accumulatedSeconds = resumeState && resumeState.elapsedSeconds
+    var accumulatedSeconds = resumeState && resumeState.elapsedSeconds
         ? resumeState.elapsedSeconds : 0;
-    let primeIndex = 0n;
+    var primeIndex = 0n;
 
-    const wallStartTime = Date.now();
-    const perfStartTime = performance.now();
-    let lastProgressUpdate = performance.now();
-    let lastYieldTime = performance.now();
+    var wallStartTime = Date.now();
+    var perfStartTime = performance.now();
+    var lastProgressUpdate = performance.now();
+    var lastYieldTime = performance.now();
 
-    const maxLimitSquared = limitSqrt * limitSqrt;
+    var maxLimitSquared = limitSqrt * limitSqrt;
 
     if (st.currentSession) {
         st.currentSession.basePrimesCount = basePrimesCount;
@@ -196,28 +197,28 @@ async function findIndexByPrime(primeValue, resumeState = null) {
     while (true) {
         if (st.cancelRequested) { updateStatus('cancelled', '✖ Cancelado'); return null; }
 
-        const high = low + BigInt(SEGMENT_BITS) - 1n;
+        var high = low + BigInt(SEGMENT_BITS) - 1n;
         if (high > maxLimitSquared) {
-            updateProgress(100, '❌ [Error] Se requiere ampliar la estimación base.');
+            updateProgress(100, '<b>Método:</b> Criba Exacta<br>❌ [Error] Se requiere ampliar la estimación base.');
             return null;
         }
 
-        const result = sieveSegment(low, high, st.basePrimesArray, segmentArray);
+        var result = sieveSegment(low, high, st.basePrimesArray, segmentArray);
         latestPrimeFound = result.lastPrime;
 
         if (primeValue >= low && primeValue <= high) {
-            let c = count;
-            let found = false;
-            for (let i = 0; i < SEGMENT_BITS; i++) {
+            var c = count;
+            var found = false;
+            for (var i = 0; i < SEGMENT_BITS; i++) {
                 if (((segmentArray[i >> 3] >> (i & 7)) & 1) === 0) {
                     c++;
-                    const val = low + BigInt(i);
+                    var val = low + BigInt(i);
                     if (val === primeValue) { primeIndex = c; found = true; break; }
                 }
             }
             count = c;
             if (found) {
-                updateProgress(100, `✅ Encontrado: primo nº ${primeIndex.toLocaleString('es-ES')} (${primeValue.toString()})`);
+                updateProgress(100, `<b>Método:</b> Criba Exacta<br>✅ Encontrado: primo nº ${primeIndex.toLocaleString('es-ES')} (${primeValue.toString()})`);
                 break;
             }
         } else {
@@ -225,33 +226,34 @@ async function findIndexByPrime(primeValue, resumeState = null) {
         }
         segmentNumber++;
 
-        const now = performance.now();
+        var now = performance.now();
         if (now - lastProgressUpdate >= 250) {
             lastProgressUpdate = now;
-            const percentage = Math.min(100, (Number(count) / estimatedIndex) * 100);
-            const ratioStr = calculateRatio(percentage).trim();
+            var percentage = Math.min(100, (Number(count) / estimatedIndex) * 100);
+            var ratioStr = calculateRatio(percentage).trim();
 
-            let estimatedPrime = latestPrimeFound;
-            const countDouble = Number(count);
+            var estimatedPrime = latestPrimeFound;
+            var countDouble = Number(count);
             if (countDouble > 10) {
-                const estVal = countDouble * Math.log(countDouble);
+                var estVal = countDouble * Math.log(countDouble);
                 estimatedPrime = nextPrime(BigInt(Math.floor(estVal)));
             }
-            const estStr = estimatedPrime.toString();
-            const estB64 = bigIntToBase64(estimatedPrime);
+            var estStr = estimatedPrime.toString();
+            var estB64 = bigIntToBase64(estimatedPrime);
 
-            const elapsedWallSec = (Date.now() - wallStartTime) / 1000.0 + accumulatedSeconds;
-            let etaStr = "Calculando...";
+            var elapsedWallSec = (Date.now() - wallStartTime) / 1000.0 + accumulatedSeconds;
+            var etaStr = "Calculando...";
             if (elapsedWallSec >= 2 && countDouble > 0) {
-                const rate = countDouble / elapsedWallSec;
-                const remaining = Math.max(0, (estimatedIndex - countDouble) / rate);
-                const etaTime = new Date(Date.now() + remaining * 1000);
+                var rate = countDouble / elapsedWallSec;
+                var remaining = Math.max(0, (estimatedIndex - countDouble) / rate);
+                var etaTime = new Date(Date.now() + remaining * 1000);
                 etaStr = formatDateTime(etaTime);
             }
 
-            // --- NUEVO FORMATO DE PROGRESO (FLEXBOX) ---
-            const progressText = `
+            // --- FORMATO DE PROGRESO (FLEXBOX) CON MÉTODO ---
+            var progressText = `
                 <div class="prog-row">
+                    <span><b>Método:</b> Criba Exacta</span>
                     <span class="prog-pct">${percentage.toFixed(2)}%</span>
                     <span class="prog-ratio">${ratioStr}</span>
                     <span class="prog-eta">ETA: ${etaStr}</span>
@@ -287,7 +289,7 @@ async function findIndexByPrime(primeValue, resumeState = null) {
         }
     }
 
-    const elapsedTotal = accumulatedSeconds + (performance.now() - perfStartTime) / 1000.0;
+    var elapsedTotal = accumulatedSeconds + (performance.now() - perfStartTime) / 1000.0;
     return {
         primeIndex,
         elapsedSeconds: elapsedTotal,
