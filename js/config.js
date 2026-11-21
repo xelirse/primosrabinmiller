@@ -29,7 +29,8 @@ function estado() {
             cancelRequested: false,
             basePrimesArray: [],
             currentSession: null,
-            autosaveTimer: null
+            autosaveTimer: null,
+            lastResult: null // NUEVO: Guarda el último resultado para el árbol
         };
     }
     return estado._v;
@@ -52,6 +53,6 @@ function describeSegment() {
 }
 
 function estimateMemory(basePrimesCount) {
-    const BASE_PRIME_BYTES = 4; // Uint32Array ocupa 4 bytes por elemento
+    const BASE_PRIME_BYTES = 4;
     return CONST().SEGMENT_SIZE_BYTES + basePrimesCount * BASE_PRIME_BYTES;
 }

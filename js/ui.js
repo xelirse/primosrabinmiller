@@ -36,8 +36,6 @@ function renderSessions() {
             : s.mode === 'b64' ? 'Índice B64'
             : s.mode === 'adec' ? 'Primo dec'
             : 'Primo B64';
-        
-        // NUEVO: Etiqueta del método/algoritmo
         const algLabel = s.algorithm === 'pnt' ? 'PNT' : s.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
         
         const raw = s.inputValue || '';
@@ -158,7 +156,6 @@ function updateStatus(status, text) {
     }
 }
 
-// NUEVO: Se añade el parámetro algName para mostrarlo en los resultados
 function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba Exacta') {
     const section = document.getElementById('resultsSection');
     if (section) section.classList.add('visible');
@@ -173,11 +170,23 @@ function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba E
     set('resultBase64', bigIntToBase64(primeValue));
     set('resultTime', timeStr);
     set('resultMem', memStr);
+    
+    // Guardar datos para el árbol
+    const st = estado();
+    st.lastResult = { prime: primeValue, index: primeIndex, exact: algName.includes('Exacta') };
+    
+    const treeBtn = document.getElementById('treeToggleBtn');
+    if (treeBtn) treeBtn.style.display = 'block';
+    
+    const treeContainer = document.getElementById('treeContainer');
+    if (treeContainer) treeContainer.style.display = 'none'; // Ocultar al mostrar nuevos resultados
 }
 
 function hideResults() {
     const section = document.getElementById('resultsSection');
     if (section) section.classList.remove('visible');
+    const treeContainer = document.getElementById('treeContainer');
+    if (treeContainer) treeContainer.style.display = 'none';
 }
 
 function setButtonsEnabled(startEnabled, cancelEnabled) {
@@ -237,7 +246,6 @@ function loadSessionResults(id) {
     if (modeSelect) modeSelect.value = session.mode;
     if (inputField)  inputField.value  = session.inputValue || '';
 
-    // NUEVO: Recuperar el nombre del algoritmo
     const algLabel = session.algorithm === 'pnt' ? 'PNT' : session.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
     const timeStr = `${(session.elapsedSeconds || 0).toFixed(2)} segundos`;
     const memStr  = `~ ${formatBytes(session.memoryBytes || 0)}`;
@@ -248,4 +256,159 @@ function loadSessionResults(id) {
         `📋 Sesión cargada desde el historial<br>` +
         `<b>Método:</b> ${algLabel}<br>` +
         `Primo nº ${primeIndex.toString()} = ${primeValue.toString()}`);
+}
+
+// ============================================================
+// DIBUJO DEL ÁRBOL (Canvas)
+// ============================================================
+const NODE_WIDTH = 140;
+const NODE_HEIGHT = 50;
+const H_GAP = 24;
+const V_GAP = 50;
+
+function toggleTree() {
+    const container = document.getElementById('treeContainer');
+    const canvas = document.getElementById('treeCanvas');
+    if (!container || !canvas) return;
+    
+    if (container.style.display === 'block') {
+        container.style.display = 'none';
+        return;
+    }
+    
+    const st = estado();
+    if (!st.lastResult) {
+        notificar('No hay resultados para mostrar.', 'warn');
+        return;
+    }
+    
+    const { prime, index, exact } = st.lastResult;
+    
+    // Construir árbol
+    const root = buildTree(index, 'Index', 0);
+    const primeNode = { 
+        val: prime, 
+        type: 'Prime', 
+        approx: !exact, 
+        children: [root], 
+        depth: 0 
+    };
+    
+    // Calcular layout
+    layoutTree(primeNode, 0, 50);
+    
+    let maxDepth = 0;
+    function getMaxDepth(n) {
+        maxDepth = Math.max(maxDepth, n.depth);
+        n.children.forEach(getMaxDepth);
+    }
+    getMaxDepth(primeNode);
+    
+    const totalWidth = Math.max(primeNode.width + 100, 600);
+    const totalHeight = (maxDepth + 1) * (NODE_HEIGHT + V_GAP) + 50;
+    
+    canvas.width = totalWidth;
+    canvas.height = totalHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawTree(ctx, primeNode);
+    
+    container.style.display = 'block';
+}
+
+function buildTree(val, type, depth) {
+    const node = { val, type, approx: false, children: [], depth: depth };
+    if (depth > 15) {
+        node.type = 'End';
+        return node;
+    }
+    
+    if (type === 'Prime') {
+        const { val: idx, approx } = getPrimeIndexSync(val);
+        node.approx = approx;
+        if (idx > 0n) {
+            node.children.push(buildTree(idx, 'Index', depth + 1));
+        }
+    } else if (type === 'Index') {
+        if (val === 1n) {
+            node.type = 'End';
+        } else if (millerRabin(val, 5)) {
+            node.children.push(buildTree(val, 'Prime', depth + 1));
+        } else {
+            const factors = factorize(val);
+            const uniqueFactors = [...new Set(factors.map(f => f.toString()))].map(f => BigInt(f));
+            for (const f of uniqueFactors) {
+                node.children.push(buildTree(f, 'Prime', depth + 1));
+            }
+        }
+    }
+    return node;
+}
+
+function layoutTree(node, depth, leftBound) {
+    node.depth = depth;
+    node.y = depth * (NODE_HEIGHT + V_GAP);
+    
+    if (node.children.length === 0) {
+        node.x = leftBound;
+        node.width = NODE_WIDTH;
+        return NODE_WIDTH;
+    }
+    
+    let currentX = leftBound;
+    let childrenWidth = 0;
+    
+    for (const child of node.children) {
+        const w = layoutTree(child, depth + 1, currentX);
+        currentX += w + H_GAP;
+        childrenWidth += w + H_GAP;
+    }
+    
+    childrenWidth -= H_GAP;
+    node.width = childrenWidth;
+    node.x = leftBound + (childrenWidth - NODE_WIDTH) / 2;
+    
+    return childrenWidth;
+}
+
+function drawTree(ctx, node) {
+    ctx.strokeStyle = '#4f8cf7';
+    ctx.lineWidth = 2;
+    for (const child of node.children) {
+        ctx.beginPath();
+        ctx.moveTo(node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT);
+        ctx.lineTo(child.x + NODE_WIDTH / 2, child.y);
+        ctx.stroke();
+        drawTree(ctx, child);
+    }
+    
+    ctx.fillStyle = node.type === 'Prime' ? '#1e3a5f' : node.type === 'Index' ? '#4a3a20' : '#2a3a55';
+    ctx.strokeStyle = node.type === 'Prime' ? '#60a5fa' : node.type === 'Index' ? '#fbbf24' : '#94a3b8';
+    ctx.lineWidth = 2;
+    
+    ctx.beginPath();
+    ctx.roundRect(node.x, node.y, NODE_WIDTH, NODE_HEIGHT, 6);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.fillStyle = '#e0e7f0';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    let text = node.val.toString();
+    if (node.approx) text = '~' + text;
+    
+    if (text.length > 15) {
+        text = text.slice(0, 7) + '...' + text.slice(-5);
+    }
+    
+    ctx.fillText(text, node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT / 2 - 8);
+    
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#8899b0';
+    let typeStr = node.type === 'Prime' ? 'Primo' : node.type === 'Index' ? 'Índice' : 'Fin';
+    if (node.approx) typeStr += ' (aprox)';
+    ctx.fillText(typeStr, node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT / 2 + 8);
 }

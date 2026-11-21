@@ -68,6 +68,69 @@ function nextPrime(n) {
 }
 
 // ============================================================
+// Factorización (Pollard's Rho + Trial Division)
+// ============================================================
+function gcd(a, b) {
+    while (b) { const t = b; b = a % b; a = t; }
+    return a;
+}
+
+function pollardRho(n) {
+    if (n % 2n === 0n) return 2n;
+    let x = 2n, y = 2n, d = 1n;
+    const f = (x) => (x * x + 1n) % n;
+    while (d === 1n) {
+        x = f(x);
+        y = f(f(y));
+        d = gcd(x > y ? x - y : y - x, n);
+    }
+    return d;
+}
+
+function factorize(n, factors = []) {
+    if (n === 1n) return factors;
+    if (millerRabin(n, 12)) { factors.push(n); return factors; }
+    
+    // Probar divisores pequeños primero para acelerar
+    for (let p of [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n]) {
+        if (n % p === 0n) {
+            factorize(p, factors);
+            factorize(n / p, factors);
+            return factors;
+        }
+    }
+    
+    // Pollard Rho
+    let d = pollardRho(n);
+    factorize(d, factors);
+    factorize(n / d, factors);
+    return factors;
+}
+
+// ============================================================
+// Cálculo del índice de un primo (síncrono para el árbol)
+// ============================================================
+function getPrimeIndexSync(p) {
+    if (p <= 1n) return { val: 0n, approx: false };
+    if (p === 2n) return { val: 1n, approx: false };
+    if (p === 3n) return { val: 2n, approx: false };
+    if (p === 5n) return { val: 3n, approx: false };
+    
+    // Si es pequeño, contar primos exactamente
+    if (p < 5000000n) {
+        let count = 3n;
+        for (let i = 7n; i <= p; i += 2n) {
+            if (millerRabin(i, 5)) count++;
+        }
+        return { val: count, approx: false };
+    }
+    
+    // Aproximación usando Riemann R
+    const r = riemannR(p);
+    return { val: r, approx: true };
+}
+
+// ============================================================
 // Criba segmentada
 // ============================================================
 function generateBasePrimes(limitSqrt) {
@@ -140,42 +203,43 @@ function sieveSegment(low, high, basePrimes, segmentArray) {
 }
 
 // ============================================================
-// Aproximaciones para números gigantescos
+// Aproximaciones
 // ============================================================
 function riemannR(xBig) {
     if (xBig < 2n) return 0n;
-    const xNum = Number(xBig);
-    const lnx = Math.log(xNum);
-    if (lnx === 0) return 0n;
     
-    // Expansión asintótica de li(x)
-    let sumScaled = 1000000n;
-    let termScaled = 1000000n;
-    const lnxScaled = BigInt(Math.round(lnx * 1000000));
+    const xBF = BF_FromBigInt(xBig);
+    const lnx = BF_Ln(xBF);
+    
+    if (lnx.v === 0n) return 0n;
+    
+    let sumBF = BF_FromBigInt(1n);
+    let termBF = BF_FromBigInt(1n);
     
     for (let k = 1; k <= 20; k++) {
-        termScaled = (termScaled * BigInt(k) * 1000000n) / lnxScaled;
-        sumScaled += termScaled;
+        termBF = BF_Mul(termBF, BF_Div(BF_FromBigInt(BigInt(k)), lnx));
+        sumBF = BF_Add(sumBF, termBF);
     }
     
-    // CORREGIDO: Se eliminó el "* 1000000n" extra en el divisor
-    return (xBig * sumScaled) / lnxScaled;
+    return BF_ToBigInt(BF_Div(BF_Mul(xBF, sumBF), lnx));
 }
 
 function riemannRInverse(nBig) {
     if (nBig < 2n) return 2n;
-    const nNum = Number(nBig);
-    let x = nNum * (Math.log(nNum) + Math.log(Math.log(nNum)) - 1);
     
-    // Iteración de Newton-Raphson
+    const nBF = BF_FromBigInt(nBig);
+    const lnN = BF_Ln(nBF);
+    const lnLnN = BF_Ln(lnN);
+    
+    let xBF = BF_Mul(nBF, BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n)));
+    
     for (let i = 0; i < 5; i++) {
-        const r = Number(riemannR(BigInt(Math.floor(x))));
-        const dr = 1 / Math.log(x);
-        x = x - (r - nNum) / dr;
+        const rBF = BF_FromBigInt(riemannR(BF_ToBigInt(xBF)));
+        const drBF = BF_Div(BF_FromBigInt(1n), BF_Ln(xBF));
+        const diff = BF_Sub(rBF, nBF);
+        const step = BF_Div(diff, drBF);
+        xBF = BF_Sub(xBF, step);
     }
     
-    // Añadimos un pequeño "ruido" pseudoaleatorio para que los últimos dígitos
-    // no sean todos ceros debido a la pérdida de precisión del float
-    const noise = BigInt(Math.floor(Math.random() * 1000000000));
-    return BigInt(Math.round(x)) + noise;
+    return BF_ToBigInt(xBF);
 }

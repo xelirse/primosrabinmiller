@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔢 Buscador de Números Primos — Criba Segmentada</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="js/config.js"   defer></script>
-    <script src="js/notify.js"   defer></script>
-    <script src="js/math.js"     defer></script>
-    <script src="js/sessions.js" defer></script>
-    <script src="js/ui.js"       defer></script>
-    <script src="js/search.js"   defer></script>
-    <script src="js/app.js"      defer></script>
-    <script src="js/main.js"     defer></script>
+    <script src="js/config.js"    defer></script>
+    <script src="js/notify.js"    defer></script>
+    <script src="js/bigfloat.js"  defer></script>
+    <script src="js/math.js"      defer></script>
+    <script src="js/sessions.js"  defer></script>
+    <script src="js/ui.js"        defer></script>
+    <script src="js/search.js"    defer></script>
+    <script src="js/app.js"       defer></script>
+    <script src="js/main.js"      defer></script>
 </head>
 <body>
     <div class="container">
@@ -54,7 +55,10 @@
         </div>
 
         <div class="results-section" id="resultsSection">
-            <h2>📊 Resultados</h2>
+            <div class="results-header">
+                <h2>📊 Resultados</h2>
+                <button class="btn btn-secondary" id="treeToggleBtn" onclick="toggleTree()" style="display:none; padding: 4px 10px; font-size: 0.75rem;">🌳 Ver Árbol</button>
+            </div>
             <div class="results-grid">
                 <div class="result-item">
                     <div class="result-label">Método / Algoritmo</div>
@@ -84,6 +88,11 @@
                     <div class="result-label">Memoria estimada</div>
                     <div class="result-value" id="resultMem">—</div>
                 </div>
+            </div>
+            
+            <!-- Contenedor del Canvas para el Árbol -->
+            <div id="treeContainer" class="tree-container">
+                <canvas id="treeCanvas"></canvas>
             </div>
         </div>
 

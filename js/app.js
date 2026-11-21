@@ -147,32 +147,45 @@ async function startSearch(resumeSessionObj = null) {
             let estBigInt;
             const algName = algorithm === 'riemann' ? 'Riemann R' : 'PNT';
             
-            if (isIndexMode) {
-                if (algorithm === 'riemann') {
-                    estBigInt = riemannRInverse(targetIndex);
+            // Evitar el error -Infinity en índices muy pequeños
+            if (isIndexMode && targetIndex <= 5n) {
+                const smallPrimes = [2n, 3n, 5n, 7n, 11n];
+                estBigInt = smallPrimes[Number(targetIndex) - 1];
+            } else if (!isIndexMode && targetPrime <= 11n) {
+                const smallIndices = { 2n: 1n, 3n: 2n, 5n: 3n, 7n: 4n, 11n: 5n };
+                estBigInt = smallIndices[targetPrime] || 1n;
+            } else {
+                // Uso del nuevo BigFloat de 46 decimales
+                if (isIndexMode) {
+                    if (algorithm === 'riemann') {
+                        estBigInt = riemannRInverse(targetIndex);
+                    } else {
+                        const nBF = BF_FromBigInt(targetIndex);
+                        const lnN = BF_Ln(nBF);
+                        const lnLnN = BF_Ln(lnN);
+                        const factor = BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n));
+                        estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
+                    }
                 } else {
-                    const nDouble = Number(targetIndex);
-                    const lnN = Math.log(nDouble);
-                    const lnLnN = Math.log(lnN);
-                    const factorScaled = BigInt(Math.round((lnN + lnLnN - 1) * 1000000));
-                    estBigInt = (targetIndex * factorScaled) / 1000000n;
+                    if (algorithm === 'riemann') {
+                        estBigInt = riemannR(targetPrime);
+                    } else {
+                        const pBF = BF_FromBigInt(targetPrime);
+                        const lnP = BF_Ln(pBF);
+                        estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
+                    }
                 }
+            }
+
+            if (isIndexMode) {
                 showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algName);
             } else {
-                if (algorithm === 'riemann') {
-                    estBigInt = riemannR(targetPrime);
-                } else {
-                    const pDouble = Number(targetPrime);
-                    const lnP = Math.log(pDouble);
-                    const lnPScaled = BigInt(Math.round(lnP * 1000000));
-                    estBigInt = (targetPrime * 1000000n) / lnPScaled;
-                }
                 showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algName);
             }
             
             updateStatus('completed', `✔ Estimado (${algName})`);
             updateProgress(100,
-                `<b>Método:</b> ${algName}<br>` +
+                `<b>Método:</b> ${algName} (Precisión 46 dec.)<br>` +
                 `⚠️ Se usó la aproximación <b>${algName}</b>.<br>` +
                 `Los últimos dígitos pueden diferir del valor real.`
             );
@@ -185,7 +198,7 @@ async function startSearch(resumeSessionObj = null) {
             upsertSession({ ...st.currentSession });
             
             notificar(`✅ Estimación (${algName}) completada y guardada.`, 'success', 3000);
-            return; // Terminamos la ejecución aquí, sin pasar por la criba
+            return;
         }
 
         // --- LÓGICA PARA CRIBA EXACTA ---
@@ -252,11 +265,11 @@ async function startSearch(resumeSessionObj = null) {
             const algFallback = 'PNT (Fallback)';
             
             if (isIndexMode) {
-                const nDouble = Number(targetIndex);
-                const lnN = Math.log(nDouble);
-                const lnLnN = Math.log(lnN);
-                const factorScaled = BigInt(Math.round((lnN + lnLnN - 1) * 1000000));
-                const estBigInt = (targetIndex * factorScaled) / 1000000n;
+                const nBF = BF_FromBigInt(targetIndex);
+                const lnN = BF_Ln(nBF);
+                const lnLnN = BF_Ln(lnN);
+                const factor = BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n));
+                const estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
 
                 showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');
@@ -268,10 +281,9 @@ async function startSearch(resumeSessionObj = null) {
                 upsertSession({ ...st.currentSession });
                 notificar('Límite excedido. Estimación PNT guardada en sesiones.', 'warn', 6000);
             } else {
-                const pDouble = Number(targetPrime);
-                const lnP = Math.log(pDouble);
-                const lnPScaled = BigInt(Math.round(lnP * 1000000));
-                const estBigInt = (targetPrime * 1000000n) / lnPScaled;
+                const pBF = BF_FromBigInt(targetPrime);
+                const lnP = BF_Ln(pBF);
+                const estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
 
                 showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');

@@ -28,7 +28,6 @@ body {
     padding: 12px;
 }
 
-/* ---------- Contenedor compacto ---------- */
 .container {
     width: 100%;
     max-width: 820px;
@@ -55,7 +54,6 @@ h1 {
     font-family: var(--mono);
 }
 
-/* ---------- Controles ---------- */
 .controls {
     display: flex;
     flex-wrap: wrap;
@@ -63,7 +61,6 @@ h1 {
     margin-bottom: 10px;
 }
 
-/* Los selectores se reparten el ancho de la fila superior */
 .controls select {
     flex: 1 1 140px;
     padding: 7px 10px;
@@ -77,15 +74,13 @@ h1 {
     transition: border-color 0.2s;
 }
 
-/* La fila inferior (input + botones) ocupa el 100% del ancho */
 .input-row {
     display: flex;
-    flex: 1 1 100%; /* Fuerza el salto de línea */
+    flex: 1 1 100%;
     gap: 8px;
     align-items: center;
 }
 
-/* El input se expande para llenar todo el espacio disponible */
 .input-row input {
     flex: 1;
     min-width: 140px;
@@ -106,7 +101,6 @@ h1 {
     box-shadow: 0 0 0 3px rgba(79, 140, 247, 0.15);
 }
 
-/* Botones */
 .btn {
     padding: 8px 14px;
     border-radius: 8px;
@@ -118,7 +112,7 @@ h1 {
     letter-spacing: 0.2px;
     white-space: nowrap;
     font-family: var(--sans);
-    flex: 0 0 auto; /* No se estiran, mantienen su tamaño */
+    flex: 0 0 auto;
 }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover:not(:disabled) {
@@ -138,7 +132,6 @@ h1 {
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* ---------- Estado ---------- */
 .status-row {
     margin-bottom: 8px;
     display: flex;
@@ -152,7 +145,6 @@ h1 {
     color: var(--text-dim);
 }
 
-/* ---------- Progreso ---------- */
 .progress-section {
     background: var(--surface2);
     border-radius: 8px;
@@ -185,7 +177,6 @@ h1 {
     overflow-wrap: anywhere;
 }
 
-/* Ajustes para el bloque de progreso */
 .prog-row {
     display: flex;
     justify-content: space-between;
@@ -202,7 +193,7 @@ h1 {
 .prog-eta { color: var(--yellow); }
 .b64-text { color: var(--yellow); word-break: break-all; white-space: normal !important; }
 
-/* ---------- Resultados (grid compacto) ---------- */
+/* ---------- Resultados ---------- */
 .results-section {
     display: none;
     background: var(--surface2);
@@ -219,11 +210,19 @@ h1 {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-.results-section h2 {
-    font-size: 0.95rem;
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 8px;
-    color: var(--green);
 }
+.results-header h2 {
+    font-size: 0.95rem;
+    color: var(--green);
+    margin: 0;
+}
+
 .results-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -259,7 +258,22 @@ h1 {
 .result-value.prime { color: var(--green); }
 .result-value.b64 { color: var(--yellow); }
 
-/* ---------- Badges de estado ---------- */
+/* ---------- Árbol Canvas ---------- */
+.tree-container {
+    display: none;
+    margin-top: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    overflow: auto;
+    max-height: 500px;
+}
+#treeCanvas {
+    display: block;
+    margin: 0 auto;
+}
+
 .status-badge {
     display: inline-block;
     padding: 3px 10px;
@@ -287,7 +301,7 @@ h1 {
 }
 
 /* ============================================================
-   SECCIÓN DE SESIONES (compacta)
+   SECCIÓN DE SESIONES
    ============================================================ */
 .sessions-section {
     margin-top: 10px;
@@ -518,7 +532,7 @@ h1 {
 }
 
 /* ============================================================
-   TOASTS (notificaciones)
+   TOASTS Y MODALES
    ============================================================ */
 .toast-container {
     position: fixed;
@@ -554,9 +568,6 @@ h1 {
 .toast.toast-warn    { border-left-color: var(--yellow); }
 .toast.toast-error   { border-left-color: var(--red); }
 
-/* ============================================================
-   MODAL DE CONFIRMACIÓN
-   ============================================================ */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -595,21 +606,12 @@ h1 {
     flex-wrap: wrap;
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
 @media (max-width: 600px) {
     .container { padding: 14px 12px; }
-    
     .controls { flex-direction: column; align-items: stretch; }
     .controls select { flex: 1 1 auto; }
-    
-    .input-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
+    .input-row { flex-direction: column; align-items: stretch; }
     .input-row .btn { width: 100%; }
-    
     .results-grid { grid-template-columns: 1fr; }
     .sessions-section { padding: 8px 10px; }
     .session-card .session-bottom { flex-direction: column; align-items: flex-start; }
@@ -622,6 +624,5 @@ h1 {
     .sessions-header { flex-direction: column; align-items: stretch; }
     .sessions-header-actions { flex-direction: column; }
     .btn-ghost { width: 100%; text-align: center; }
-    
     .prog-row { flex-direction: column; align-items: flex-start; gap: 2px; }
 }
