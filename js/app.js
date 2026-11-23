@@ -107,10 +107,28 @@ async function startSearch(resumeSessionObj = null) {
             if (targetPrime < 2n) { notificar('El valor debe ser mayor o igual a 2.', 'error'); return; }
         }
 
+        // NUEVO: Verificar si ya existe una sesión completada con esta misma configuración
+        const sessions = loadSessions();
+        const existingSession = sessions.find(s => 
+            s.status === 'completed' &&
+            s.mode === mode &&
+            s.inputValue === inputValue &&
+            (s.algorithm === algorithm || s.originalAlgorithm === algorithm) &&
+            (s.latestPrimeFound !== '0' || s.primeIndex) // Asegurarse de que tiene datos válidos
+        );
+
+        if (existingSession) {
+            notificar('✅ Sesión ya calculada encontrada. Cargando resultados...', 'success', 3000);
+            loadSessionResults(existingSession.id);
+            return; // Detener la ejecución aquí, no hace falta calcular
+        }
+
         st.currentSession = {
             id: `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             mode,
             algorithm,
+            originalAlgorithm: algorithm,
+            isFallback: false,
             inputValue,
             targetIndex: targetIndex !== null ? targetIndex.toString() : null,
             targetPrime: targetPrime !== null ? targetPrime.toString() : null,
@@ -126,6 +144,7 @@ async function startSearch(resumeSessionObj = null) {
             memoryBytes: 0,
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            treeData: null
         };
     }
 
@@ -147,47 +166,37 @@ async function startSearch(resumeSessionObj = null) {
             let estBigInt;
             const algName = algorithm === 'riemann' ? 'Riemann R' : 'PNT';
             
-            // Evitar el error -Infinity en índices muy pequeños
-            if (isIndexMode && targetIndex <= 5n) {
-                const smallPrimes = [2n, 3n, 5n, 7n, 11n];
-                estBigInt = smallPrimes[Number(targetIndex) - 1];
-            } else if (!isIndexMode && targetPrime <= 11n) {
-                const smallIndices = { 2n: 1n, 3n: 2n, 5n: 3n, 7n: 4n, 11n: 5n };
-                estBigInt = smallIndices[targetPrime] || 1n;
-            } else {
-                // Uso del nuevo BigFloat de 46 decimales
-                if (isIndexMode) {
-                    if (algorithm === 'riemann') {
-                        estBigInt = riemannRInverse(targetIndex);
-                    } else {
-                        const nBF = BF_FromBigInt(targetIndex);
-                        const lnN = BF_Ln(nBF);
-                        const lnLnN = BF_Ln(lnN);
-                        const factor = BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n));
-                        estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
-                    }
-                } else {
-                    if (algorithm === 'riemann') {
-                        estBigInt = riemannR(targetPrime);
-                    } else {
-                        const pBF = BF_FromBigInt(targetPrime);
-                        const lnP = BF_Ln(pBF);
-                        estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
-                    }
-                }
-            }
-
             if (isIndexMode) {
+                if (algorithm === 'riemann') {
+                    estBigInt = riemannRInverse(targetIndex);
+                } else {
+                    const nBF = BF_FromBigInt(targetIndex);
+                    const lnN = BF_Ln(nBF);
+                    const lnLnN = BF_Ln(lnN);
+                    const factor = BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n));
+                    estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
+                }
+                // Forzar a que sea un primo real buscando el siguiente
+                estBigInt = nextPrime(estBigInt);
                 showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algName);
             } else {
+                if (algorithm === 'riemann') {
+                    estBigInt = riemannR(targetPrime);
+                } else {
+                    const pBF = BF_FromBigInt(targetPrime);
+                    const lnP = BF_Ln(pBF);
+                    estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
+                }
+                // Forzar a que sea un primo real
+                estBigInt = nextPrime(estBigInt);
                 showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algName);
             }
             
             updateStatus('completed', `✔ Estimado (${algName})`);
             updateProgress(100,
-                `<b>Método:</b> ${algName} (Precisión 46 dec.)<br>` +
+                `<b>Método:</b> ${algName}<br>` +
                 `⚠️ Se usó la aproximación <b>${algName}</b>.<br>` +
-                `Los últimos dígitos pueden diferir del valor real.`
+                `Se ha verificado y ajustado al primo más cercano.`
             );
 
             st.currentSession.status = 'completed';
@@ -269,29 +278,45 @@ async function startSearch(resumeSessionObj = null) {
                 const lnN = BF_Ln(nBF);
                 const lnLnN = BF_Ln(lnN);
                 const factor = BF_Sub(BF_Add(lnN, lnLnN), BF_FromBigInt(1n));
-                const estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
+                let estBigInt = BF_ToBigInt(BF_Mul(nBF, factor));
+
+                // Forzar a que sea un primo real
+                estBigInt = nextPrime(estBigInt);
 
                 showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');
-                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT para estimar.`);
+                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT y se ajustó al primo real más cercano.`);
                 
                 st.currentSession.status = 'completed';
                 st.currentSession.progress = 100;
                 st.currentSession.latestPrimeFound = estBigInt.toString();
+                
+                st.currentSession.originalAlgorithm = st.currentSession.algorithm;
+                st.currentSession.algorithm = 'pnt';
+                st.currentSession.isFallback = true;
+                
                 upsertSession({ ...st.currentSession });
                 notificar('Límite excedido. Estimación PNT guardada en sesiones.', 'warn', 6000);
             } else {
                 const pBF = BF_FromBigInt(targetPrime);
                 const lnP = BF_Ln(pBF);
-                const estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
+                let estBigInt = BF_ToBigInt(BF_Div(pBF, lnP));
+
+                // Forzar a que sea un primo real
+                estBigInt = nextPrime(estBigInt);
 
                 showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algFallback);
                 updateStatus('completed', '✔ Estimado (PNT)');
-                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT para estimar.`);
+                updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT y se ajustó al primo real más cercano.`);
                 
                 st.currentSession.status = 'completed';
                 st.currentSession.progress = 100;
                 st.currentSession.primeIndex = estBigInt.toString();
+                
+                st.currentSession.originalAlgorithm = st.currentSession.algorithm;
+                st.currentSession.algorithm = 'pnt';
+                st.currentSession.isFallback = true;
+                
                 upsertSession({ ...st.currentSession });
                 notificar('Límite excedido. Estimación PNT guardada en sesiones.', 'warn', 6000);
             }
@@ -312,6 +337,10 @@ async function startSearch(resumeSessionObj = null) {
         stopAutosave();
         setButtonsEnabled(true, false);
         updateAutosaveInfo();
+        
+        if (st.currentSession) {
+            st.lastSessionId = st.currentSession.id;
+        }
         st.currentSession = null;
     }
 }

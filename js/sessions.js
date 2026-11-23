@@ -13,9 +13,13 @@ function loadSessions() {
 
 function saveSessions(sessions) {
     try {
+        // Blindaje: Convertir BigInts a String si los hay para evitar crash de JSON.stringify
+        const safeSessions = JSON.parse(JSON.stringify(sessions, (key, value) => 
+            typeof value === 'bigint' ? value.toString() : value
+        ));
         localStorage.setItem(
             CONST().SESSION_STORAGE_KEY,
-            JSON.stringify(sessions.slice(0, CONST().MAX_SESSIONS))
+            JSON.stringify(safeSessions)
         );
     } catch (e) {
         console.warn('No se pudieron guardar las sesiones:', e);
@@ -66,6 +70,9 @@ function sanitizeSession(raw) {
         id,
         mode,
         inputValue,
+        algorithm: raw.algorithm || 'exact',
+        originalAlgorithm: raw.originalAlgorithm || raw.algorithm || 'exact',
+        isFallback: !!raw.isFallback,
         targetIndex: raw.targetIndex != null ? String(raw.targetIndex) : null,
         targetPrime: raw.targetPrime != null ? String(raw.targetPrime) : null,
         primeIndex: raw.primeIndex != null ? String(raw.primeIndex) : null,
@@ -80,6 +87,7 @@ function sanitizeSession(raw) {
         memoryBytes: typeof raw.memoryBytes === 'number' ? raw.memoryBytes : 0,
         createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
         updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : Date.now(),
+        treeData: raw.treeData || null // Preservar el árbol al importar
     };
 }
 

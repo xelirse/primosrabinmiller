@@ -1,37 +1,35 @@
 # 🔢 Buscador de Números Primos — Criba Segmentada
 
-_Leeme.md actualizado._
-
-Una aplicación web de alto rendimiento orientada a la búsqueda, cálculo y visualización de números primos gigantescos directamente desde el navegador. Utiliza algoritmos avanzados de teoría de números, soporte nativo para `BigInt`, un motor de precisión decimal propio (`BigFloat`) y un sistema de gestión de sesiones para procesos de larga duración.
+Aplicación web orientada a la búsqueda, cálculo y visualización de números primos desde el navegador[cite: 5]. Utiliza algoritmos de teoría de números, soporte nativo para `BigInt`, un motor de precisión decimal propio (`BigFloat`) y un sistema de persistencia de sesiones para procesos de larga duración[cite: 5].
 
 ## ✨ Características Principales
 
-* **🚀 Triple Motor de Búsqueda:** Adapta el cálculo según el tamaño del número:
-  * **Criba Exacta:** Para rangos que caben en la memoria del navegador.
-  * **Aprox. Riemann R:** Estimación analítica usando la función R de Riemann.
-  * **Aprox. PNT:** Estimación rápida basada en el Teorema de los Números Primos.
-* **🧮 Motor `BigFloat` de 46 Decimales:** Las aproximaciones PNT y Riemann R no usan los números flotantes nativos de JavaScript (limitados a 17 dígitos). En su lugar, implementan un motor de punto fijo en `BigInt` que calcula logaritmos y raíces con 46 decimales de precisión exacta, evitando errores de desbordamiento (como `-Infinity`).
-* **🌳 Visualización de Árbol (Canvas):** Un botón en los resultados permite dibujar un árbol genealógico del primo encontrado. Muestra el Primo, su Índice, la factorización del índice, y recursivamente los índices de esos factores hasta llegar a 1. Usa el algoritmo **Pollard's Rho** para factorizar instantáneamente.
-* **🛡️ Verificación Determinista:** Utiliza el test de primalidad de **Miller-Rabin** con 12 bases fijas, garantizando una verificación rigurosa para números masivos.
-* **🧠 Límite de Memoria Seguro:** Si la Criba Exacta requiere más de **64 MB** de RAM para generar los primos base, el navegador no colapsa. La app intercepta el error y ofrece una estimación instantánea mediante PNT usando el motor `BigFloat`.
-* **📊 Resultados Completos:** Cada búsqueda muestra siete datos en un grid adaptable:
-  * **Método / Algoritmo utilizado** (Criba Exacta, PNT, Riemann R o PNT Fallback).
-  * Primo número (índice) — decimal.
-  * Primo número (índice) en Base64.
-  * Valor del primo en Decimal.
-  * Valor del primo en Base64.
-  * Tiempo de cálculo.
-  * Memoria estimada.
-* **📈 Estadísticas en Tiempo Real:** El bloque de progreso dinámico muestra el porcentaje, ETA, último primo encontrado, estimación, segmentos, total de primos y, de manera destacada, el **Método** que se está ejecutando.
+* **🚀 Triple Motor de Búsqueda:** Adapta el cálculo según el tamaño del número y el método elegido[cite: 5, 15]:
+  * **Criba Exacta:** Criba segmentada en bloques sobre `BigInt`[cite: 5, 20].
+  * **Aprox. Riemann R:** Estimación analítica usando la función R de Riemann y su inversa[cite: 5, 18].
+  * **Aprox. PNT:** Estimación basada en el Teorema de los Números Primos[cite: 5, 17].
+* **🧮 Motor `BigFloat` de 46 Decimales:** Las aproximaciones PNT y Riemann R implementan aritmética de punto fijo en `BigInt` escalada a $10^{46}$ para calcular logaritmos, raíces y series sin depender del límite de precisión de los números flotantes nativos de JavaScript[cite: 5, 18].
+* **🌳 Visualización de Árbol (Canvas):** Un botón en los resultados despliega un lienzo interactivo (con zoom y desplazamiento) que dibuja el árbol genealógico del primo encontrado[cite: 5, 6, 15]. Muestra el primo, su índice, la factorización del índice y recursivamente los índices de sus factores hasta llegar a 1, alineando horizontalmente los valores iguales y separando conectores y filas[cite: 5, 6].
+* **🛡️ Verificación de Primalidad:** Utiliza el test de **Miller-Rabin** con 12 bases fijas en las búsquedas y verificaciones principales[cite: 5, 15, 17].
+* **🧠 Límite de Memoria y Fallback:** Si la Criba Exacta supera el límite de memoria configurado para los primos base, intercepta el error y aplica un fallback mediante PNT ajustado al primo siguiente[cite: 5, 17, 18].
+* **📊 Resultados Completos:** Cada búsqueda muestra siete datos en un grid adaptable[cite: 4, 5, 15]:
+  * **Método / Algoritmo** (Criba Exacta, PNT, Riemann R o PNT Fallback)[cite: 5, 15, 17].
+  * **Primo número (índice)** en decimal[cite: 5, 15].
+  * **Primo número (índice) en Base64**[cite: 5, 15].
+  * **Valor del primo en Decimal**[cite: 5, 15].
+  * **Valor del primo en Base64**[cite: 5, 15].
+  * **Tiempo de cálculo**[cite: 5, 15].
+  * **Memoria estimada**[cite: 5, 15].
+* **📈 Progreso en Tiempo Real:** Muestra porcentaje, razón de avance, ETA, último primo encontrado o estimado y segmentos procesados[cite: 4, 20].
 * **💾 Gestión de Sesiones y Autoguardado:**
-  * Guardado automático de cualquier cálculo (exacto o estimado) cada 60 segundos.
-  * Cada sesión en el historial muestra claramente el **Método** que se utilizó (ej. `⚙ PNT`, `⚙ Riemann R`, `⚙ Exacta`).
-  * Exportación e importación de sesiones mediante archivos `.json`.
-* **🔔 Notificaciones No Bloqueantes:** Toasts apilables y modales de confirmación propios, sin usar `alert()` ni `confirm()` nativos que congelen el hilo principal.
+  * Guardado automático periódico de la sesión activa[cite: 7, 15].
+  * Historial de sesiones con indicación del método empleado, carga directa de resultados completados, recálculo, reanudación y eliminación[cite: 5, 7, 17].
+  * Exportación e importación de sesiones mediante archivos `.json`[cite: 5, 10, 15].
+* **🔔 Notificaciones No Bloqueantes:** Toasts y modales de confirmación propios en la interfaz[cite: 4, 5, 8].
 
 ## 🛠️ Tecnologías y Estructura
 
-El proyecto está construido con tecnologías web estándar (Vanilla Web), sin dependencias de frameworks externos pesados, lo que garantiza una ejecución rápida y directa.
+El proyecto está construido con tecnologías web estándar (HTML, CSS y JavaScript), sin dependencias de frameworks externos[cite: 3, 4, 5].
 
 ```text
 iprimo/
@@ -40,80 +38,80 @@ iprimo/
 └── js/
     ├── config.js     ← CONST(), estado(), helpers de formato
     ├── notify.js     ← sistema de toasts y modal de confirmación
-    ├── bigfloat.js   ← NUEVO: Motor de punto fijo de 46 decimales
-    ├── math.js       ← BigInt ↔ Base64, Miller-Rabin, Pollard's Rho, cribas, Riemann R
+    ├── bigfloat.js   ← motor de punto fijo de 46 decimales
+    ├── math.js       ← BigInt ↔ Base64, Miller-Rabin, factorización, cribas, Riemann R
     ├── sessions.js   ← localStorage, importación / exportación JSON
-    ├── ui.js         ← render de sesiones, progreso, resultados y dibujo del árbol en Canvas
+    ├── ui.js         ← render de sesiones, progreso, resultados y carga de sesiones
+    ├── tree.js       ← construcción del árbol, layout y dibujo en Canvas
     ├── search.js     ← findNthPrime, findIndexByPrime
-    ├── app.js        ← startSearch, cancelSearch, ruteo de algoritmos y uso de BigFloat
+    ├── app.js        ← startSearch, cancelSearch, ruteo de algoritmos y fallback
     └── main.js       ← programa() + llamada de arranque
 ```
 
-### Filosofía del código JS
+### Organización del código JS
 
-* **Sin variables globales:** las constantes viven en `CONST()` y el estado mutable en `estado()`, ambas con caché estático (`CONST._v`, `estado._v`).
-* **Solo declaraciones `function` a nivel superior:** nada de `const`/`let`/`var` sueltos. Esto permite que los `onclick="..."` del HTML sigan funcionando.
-* **Sin IIFE:** únicamente funciones con nombre + `programa();` al final de `main.js`.
-* **Orden de carga con `defer`:** los nueve archivos se ejecutan en orden tras el parseo del HTML, garantizando que `programa()` encuentre el DOM listo y todas las funciones definidas.
+* **Sin variables globales:** las constantes viven en `CONST()` y el estado mutable en `estado()`, ambas con caché estático[cite: 5].
+* **Declaraciones `function` a nivel superior:** permite que los manejadores `onclick` y los eventos del HTML interactúen directamente con las funciones del módulo[cite: 5, 15].
+* **Sin IIFE:** funciones con nombre y llamada a `programa()` al iniciar[cite: 5].
+* **Orden de carga con `defer`:** los scripts se cargan en secuencia tras el parseo del documento[cite: 5, 15].
 
 ## 🚀 Cómo usar
 
-1. Clona este repositorio en tu máquina local:
+1. Clona este repositorio en tu máquina local[cite: 5]:
 
    ```bash
-   git clone https://github.com/xelirse/primosrabinmiller.git
+   git clone [https://github.com/xelirse/primosrabinmiller.git](https://github.com/xelirse/primosrabinmiller.git)
    ```
 
-2. No requiere instalación de paquetes (Node.js, npm, etc.).
-3. Simplemente abre el archivo `iprimo.html` en cualquier navegador web moderno (Chrome, Firefox, Edge, Safari).
-4. Selecciona el modo de búsqueda, el algoritmo (Exacto, PNT o Riemann R), ingresa tu valor y presiona **🚀 Buscar**.
-5. Una vez obtenido un resultado, presiona **🌳 Ver Árbol** para explorar su estructura interna.
+2. No requiere instalación de paquetes ni servidor de compilación[cite: 5].
+3. Abre `iprimo.html` en un navegador web moderno[cite: 5, 15].
+4. Selecciona el modo de búsqueda, el algoritmo (`Criba Exacta`, `Aprox. PNT` o `Aprox. Riemann R`), ingresa un valor y presiona **🚀 Buscar**[cite: 5, 15].
+5. Cuando haya un resultado visible, presiona **🌳 Ver Árbol** para generar y visualizar su árbol[cite: 5, 6, 15].
 
 ### Modos de búsqueda
 
 | Modo | Entrada | Devuelve |
 |---|---|---|
-| **Índice decimal** | `1000000` | el primo nº 1,000,000 |
-| **Índice en Base64** | `F4240` | el primo cuyo índice es `1000000` |
-| **Valor del primo en Decimal** | `15485863` | el índice de ese primo |
-| **Valor del primo en Base64** | `7sTHe` | el índice de ese primo |
+| **Índice decimal** | `1000000`[cite: 5] | el primo nº 1,000,000[cite: 5] |
+| **Índice en Base64** | `F4240`[cite: 5] | el primo cuyo índice es `1000000`[cite: 5] |
+| **Valor del primo en Decimal** | `15485863`[cite: 5] | el índice de ese primo[cite: 5] |
+| **Valor del primo en Base64** | `7sTHe`[cite: 5] | el índice de ese primo[cite: 5] |
 
 ### Algoritmos Disponibles
 
-* **Criba Exacta:** Busca el valor real usando segmentos en RAM. Si el número es demasiado grande (ej. \(10^{25}\)), arrojará un aviso de falta de memoria y aplicará un fallback automático a PNT.
-* **Aprox. PNT:** Usa el Teorema de los Números Primos (\(p_n \approx n(\ln n + \ln \ln n - 1)\)). Gracias al motor `BigFloat`, es instantáneo y conserva una alta precisión incluso en números extremadamente grandes.
-* **Aprox. Riemann R:** Usa la función R de Riemann y su inversa, implementada con el motor `BigFloat` y el método de Newton-Raphson para una convergencia rápida y precisa.
+* **Criba Exacta:** Calcula o ubica el primo o su índice mediante criba segmentada en bloques[cite: 5, 20]. Si el tamaño supera el límite de memoria permitido para los primos base, realiza un fallback a PNT[cite: 5, 17, 18].
+* **Aprox. PNT:** Estima el valor o el índice usando el Teorema de los Números Primos con `BigFloat` y ajusta al siguiente primo con `nextPrime`[cite: 5, 17, 18].
+* **Aprox. Riemann R:** Estima mediante la función R de Riemann o su inversa con iteraciones de Newton-Raphson sobre `BigFloat` y ajusta al siguiente primo[cite: 5, 17, 18].
 
 ## 🧠 Sobre los Algoritmos
 
-* **BigFloat (Punto Fijo):** Al intentar calcular `ln(x)` para números gigantescos, los flotantes de JS colapsan. `bigfloat.js` implementa una aritmética escalada a \(10^{46}\). Mediante series de Taylor para el logaritmo natural y el método de Newton para raíces cuadradas, garantiza que los últimos 46 dígitos decimales sean matemáticamente correctos.
-* **Criba Segmentada:** Divide el rango de búsqueda en bloques que caben en la caché de la CPU. Cada segmento procesa `4,190,208` bytes = `33,521,664` números. Los primos base se almacenan en un `Uint32Array` para ahorrar hasta un 80% de memoria.
-* **Miller-Rabin (12 bases):** Test de primalidad determinista usando las primeras 12 bases primas, evitando falsos positivos en los rangos soportados.
-* **Pollard's Rho:** Utilizado exclusivamente para la generación del árbol genealógico. Encuentra los factores primos de índices compuestos de manera eficiente en tiempo \(O(n^{1/4})\).
-* **Árbol de Factores:** Si el índice es menor a 5,000,000, cuenta los primos exactamente mediante fuerza bruta; si es mayor, usa la función R de Riemann para estimar el índice del factor y lo marca con un prefijo `~` en el canvas.
+* **BigFloat (Punto Fijo):** Implementa operaciones en `BigInt` a escala $10^{46}$ (logaritmo natural, raíces y aritmética decimal) para operar con números de gran magnitud sin pérdida de precisión en flotantes estándar[cite: 5, 18].
+* **Criba Segmentada:** Procesa rangos en bloques de `SEGMENT_SIZE_BYTES` (`SEGMENT_BITS` bits) usando un `Uint32Array` para los primos base y un `Uint8Array` por segmento[cite: 18, 20].
+* **Miller-Rabin (12 bases):** Verifica primalidad usando las bases configuradas en `CONST().MILLER_RABIN_BASES`[cite: 5, 18].
+* **Factorización en el Árbol:** Descompone índices compuestos combinando división por primos pequeños, Pollard's Rho (Brent), ECM y SIQS, y obtiene o estima los índices de los factores resultantes[cite: 6, 18].
 
 ## 💾 Persistencia
 
 | Clave en `localStorage` | Contenido |
 |---|---|
-| `iprimo_sessions_v1` | lista de sesiones guardadas (máx. 20) |
-| `iprimo_active_session` | id de la sesión en curso al cerrar la pestaña |
+| `iprimo_sessions_v1`[cite: 5] | lista de sesiones guardadas[cite: 5] |
+| `iprimo_active_session`[cite: 5] | id de la sesión activa al cerrar o cambiar de pestaña[cite: 5, 8] |
 
-* El autoguardado escribe la sesión activa cada **60 s**.
-* Los eventos `beforeunload`, `pagehide` y `visibilitychange` fuerzan un guardado inmediato al ocultar o cerrar la pestaña.
-* Las sesiones que quedan en estado `running` por un cierre abrupto se degradan a `paused` al arrancar y se ofrece reanudarlas mediante el modal de confirmación.
-* **Cada sesión almacena y muestra el algoritmo seleccionado**, permitiendo distinguir de un vistazo entre cálculos exactos y estimaciones en el panel de "Sesiones guardadas".
+* El autoguardado persiste la sesión en curso cada `AUTOSAVE_INTERVAL_MS` (60 s)[cite: 5, 7].
+* Los eventos `beforeunload`, `pagehide` y `visibilitychange` guardan el estado al ocultar o cerrar la página[cite: 5, 17].
+* Las sesiones que quedaron en `running` se marcan como `paused` al iniciar y pueden reanudarse o retomarse desde el historial[cite: 5, 7, 8].
+* Cada sesión guarda el algoritmo utilizado, el progreso, los resultados y el árbol generado (si se abrió)[cite: 5, 6, 7, 17].
 
 ## 🤝 Contribución
 
-Las contribuciones son bienvenidas. Si deseas mejorar el algoritmo de búsqueda, optimizar el uso de memoria o mejorar la interfaz:
+Las contribuciones son bienvenidas[cite: 5]:
 
-1. Haz un *Fork* del proyecto.
-2. Crea una rama para tu característica (`git checkout -b feature/NuevaCaracteristica`).
-3. Haz *Commit* de tus cambios (`git commit -m 'Añadida nueva característica'`).
-4. Haz *Push* a la rama (`git push origin feature/NuevaCaracteristica`).
-5. Abre un *Pull Request*.
+1. Haz un *Fork* del proyecto[cite: 5].
+2. Crea una rama para tu cambio (`git checkout -b feature/NuevaCaracteristica`)[cite: 5].
+3. Haz *Commit* de tus cambios (`git commit -m 'Añadida nueva característica'`)[cite: 5].
+4. Haz *Push* a la rama (`git push origin feature/NuevaCaracteristica`)[cite: 5].
+5. Abre un *Pull Request*[cite: 5].
 
 ## 📄 Licencia / Dominio Público
 
-Este proyecto es de **Dominio Público**. Eres completamente libre de utilizar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias de este software, sin ninguna restricción. No se requiere dar crédito ni solicitar permiso.
+Este proyecto es de **Dominio Público**[cite: 5]. Puedes utilizar, copiar, modificar, distribuir y comercializar este software sin restricciones ni necesidad de permiso o atribución[cite: 5].

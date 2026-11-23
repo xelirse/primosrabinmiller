@@ -10,7 +10,8 @@
     <script src="js/bigfloat.js"  defer></script>
     <script src="js/math.js"      defer></script>
     <script src="js/sessions.js"  defer></script>
-    <script src="js/ui.js"        defer></script>
+	<script src="js/ui.js"        defer></script>
+    <script src="js/tree.js"      defer></script>
     <script src="js/search.js"    defer></script>
     <script src="js/app.js"       defer></script>
     <script src="js/main.js"      defer></script>
@@ -90,9 +91,17 @@
                 </div>
             </div>
             
-            <!-- Contenedor del Canvas para el Árbol -->
+			<!-- Contenedor del Canvas para el Árbol -->
             <div id="treeContainer" class="tree-container">
-                <canvas id="treeCanvas"></canvas>
+                <div class="tree-toolbar">
+                    <button class="btn btn-secondary" type="button" onclick="zoomTree(1.2)" style="padding: 3px 9px; font-size: 0.74rem;">🔍+ Zoom In</button>
+                    <button class="btn btn-secondary" type="button" onclick="zoomTree(0.8)" style="padding: 3px 9px; font-size: 0.74rem;">🔍- Zoom Out</button>
+                    <button class="btn btn-secondary" type="button" onclick="resetTreeZoom()" style="padding: 3px 9px; font-size: 0.74rem;">↺ 100%</button>
+                    <span id="treeZoomLabel" class="tree-zoom-label">100%</span>
+                </div>
+                <div id="treeViewport" class="tree-viewport" onwheel="handleTreeWheel(event)" onmousedown="startTreePan(event)" onmousemove="moveTreePan(event)" onmouseup="endTreePan()" onmouseleave="endTreePan()">
+                    <canvas id="treeCanvas"></canvas>
+                </div>
             </div>
         </div>
 

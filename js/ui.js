@@ -21,66 +21,144 @@ function escapeHtml(s) {
 function renderSessions() {
     const list = document.getElementById('sessionsList');
     if (!list) return;
+    
+    list.innerHTML = '';
+    
     const sessions = loadSessions();
     if (sessions.length === 0) {
-        list.innerHTML = '<div class="session-empty">No hay sesiones guardadas todavía. Use «📂 Cargar sesión» para importar desde un archivo.</div>';
+        const empty = document.createElement('div');
+        empty.className = 'session-empty';
+        empty.textContent = 'No hay sesiones guardadas todavía. Use «📂 Cargar sesión» para importar desde un archivo.';
+        list.appendChild(empty);
         return;
     }
-    list.innerHTML = sessions.map(s => {
-        const statusClass = s.status === 'running' ? 'running'
-            : s.status === 'completed' ? 'completed' : 'paused';
-        const statusText = s.status === 'running' ? '● En curso'
-            : s.status === 'completed' ? '✔ Completada' : '⏸ Pausada';
-        const progress = Math.min(100, Math.max(0, s.progress || 0));
-        const modeLabel = s.mode === 'decimal' ? 'Índice dec'
+
+    sessions.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'session-card';
+        card.dataset.id = s.id;
+
+        // --- Fila Superior ---
+        const top = document.createElement('div');
+        top.className = 'session-top';
+
+        const modeSpan = document.createElement('span');
+        modeSpan.className = 'session-mode';
+        modeSpan.textContent = s.mode === 'decimal' ? 'Índice dec'
             : s.mode === 'b64' ? 'Índice B64'
             : s.mode === 'adec' ? 'Primo dec'
             : 'Primo B64';
-        const algLabel = s.algorithm === 'pnt' ? 'PNT' : s.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
-        
-        const raw = s.inputValue || '';
-        const valueDisplay = raw.length > 44 ? raw.slice(0, 22) + '…' + raw.slice(-18) : raw;
-        const elapsed = (s.elapsedSeconds && s.elapsedSeconds > 0)
-            ? `${s.elapsedSeconds.toFixed(1)}s` : '—';
+        top.appendChild(modeSpan);
+
+        const rawVal = s.inputValue || '';
+        const valSpan = document.createElement('span');
+        valSpan.className = 'session-value';
+        valSpan.textContent = rawVal;
+        valSpan.title = rawVal;
+        top.appendChild(valSpan);
+
+        const statusSpan = document.createElement('span');
+        statusSpan.className = `session-status ${s.status === 'running' ? 'running' : s.status === 'completed' ? 'completed' : 'paused'}`;
+        statusSpan.textContent = s.status === 'running' ? '● En curso'
+            : s.status === 'completed' ? '✔ Completada' : '⏸ Pausada';
+        top.appendChild(statusSpan);
+
+        card.appendChild(top);
+
+        // --- Barra de progreso ---
+        const progressVal = Math.min(100, Math.max(0, s.progress || 0));
+        const progBar = document.createElement('div');
+        progBar.className = 'session-progress-bar';
+        const progFill = document.createElement('div');
+        progFill.className = 'session-progress-fill';
+        progFill.style.width = `${progressVal}%`;
+        progBar.appendChild(progFill);
+        card.appendChild(progBar);
+
+        // --- Fila Inferior ---
+        const bottom = document.createElement('div');
+        bottom.className = 'session-bottom';
+
+        const meta = document.createElement('div');
+        meta.className = 'session-meta';
+
+        let algLabel = s.algorithm === 'pnt' ? 'PNT' : s.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
+        if (s.isFallback) {
+            const origLabel = s.originalAlgorithm === 'exact' ? 'Exacta' : s.originalAlgorithm === 'riemann' ? 'Riemann R' : 'PNT';
+            algLabel = `${origLabel} → PNT (Fallback)`;
+        }
+
+        const elapsed = (s.elapsedSeconds && s.elapsedSeconds > 0) ? `${s.elapsedSeconds.toFixed(1)}s` : '—';
         const updated = timeAgo(s.updatedAt || Date.now());
+
+        const spanAlg = document.createElement('span');
+        spanAlg.textContent = `⚙ ${algLabel}`;
+        meta.appendChild(spanAlg);
+
+        const spanProg = document.createElement('span');
+        spanProg.textContent = `${progressVal.toFixed(2)}%`;
+        meta.appendChild(spanProg);
+
+        const spanElapsed = document.createElement('span');
+        spanElapsed.textContent = `⏱ ${elapsed}`;
+        meta.appendChild(spanElapsed);
+
+        const spanUpdated = document.createElement('span');
+        spanUpdated.textContent = `🕒 ${updated}`;
+        meta.appendChild(spanUpdated);
+
+        bottom.appendChild(meta);
+
+        // --- Botones de Acción ---
+        const actions = document.createElement('div');
+        actions.className = 'session-actions';
         const isIndexMode = s.mode === 'decimal' || s.mode === 'b64';
 
-        let actionsHtml = '';
         if (s.status === 'completed') {
             const hasCompleteData = isIndexMode
                 ? (s.targetIndex && s.latestPrimeFound && s.latestPrimeFound !== '0')
                 : (s.targetPrime && s.primeIndex);
             if (hasCompleteData) {
-                actionsHtml += `<button class="session-btn load-btn" title="Cargar resultados guardados sin recalcular" onclick="loadSessionResults('${s.id}')">📋 Cargar</button>`;
+                const btnLoad = document.createElement('button');
+                btnLoad.className = 'session-btn load-btn';
+                btnLoad.textContent = '📋 Cargar';
+                btnLoad.title = 'Cargar resultados guardados sin recalcular';
+                btnLoad.onclick = () => loadSessionResults(s.id);
+                actions.appendChild(btnLoad);
             }
-            actionsHtml += `<button class="session-btn resume-btn" title="Volver a calcular desde cero" onclick="resumeSession('${s.id}')">🔁 Recalcular</button>`;
+            const btnResume = document.createElement('button');
+            btnResume.className = 'session-btn resume-btn';
+            btnResume.textContent = '🔁 Recalcular';
+            btnResume.title = 'Volver a calcular desde cero';
+            btnResume.onclick = () => resumeSession(s.id);
+            actions.appendChild(btnResume);
         } else if (s.status === 'paused') {
-            actionsHtml += `<button class="session-btn resume-btn" onclick="resumeSession('${s.id}')">▶ Reanudar</button>`;
+            const btnResume = document.createElement('button');
+            btnResume.className = 'session-btn resume-btn';
+            btnResume.textContent = '▶ Reanudar';
+            btnResume.onclick = () => resumeSession(s.id);
+            actions.appendChild(btnResume);
         }
-        actionsHtml += `<button class="session-btn export-btn" title="Exportar a JSON" onclick="exportSession('${s.id}')">⬇ Exportar</button>`;
-        actionsHtml += `<button class="session-btn delete-btn" title="Eliminar" onclick="deleteSessionById('${s.id}')">🗑</button>`;
 
-        return `
-            <div class="session-card" data-id="${s.id}">
-                <div class="session-top">
-                    <span class="session-mode">${modeLabel}</span>
-                    <span class="session-value" title="${escapeHtml(raw)}">${escapeHtml(valueDisplay)}</span>
-                    <span class="session-status ${statusClass}">${statusText}</span>
-                </div>
-                <div class="session-progress-bar">
-                    <div class="session-progress-fill" style="width:${progress}%"></div>
-                </div>
-                <div class="session-bottom">
-                    <div class="session-meta">
-                        <span>⚙ ${algLabel}</span>
-                        <span>${progress.toFixed(2)}%</span>
-                        <span>⏱ ${elapsed}</span>
-                        <span>🕒 ${updated}</span>
-                    </div>
-                    <div class="session-actions">${actionsHtml}</div>
-                </div>
-            </div>`;
-    }).join('');
+        const btnExport = document.createElement('button');
+        btnExport.className = 'session-btn export-btn';
+        btnExport.textContent = '⬇ Exportar';
+        btnExport.title = 'Exportar a JSON';
+        btnExport.onclick = () => exportSession(s.id);
+        actions.appendChild(btnExport);
+
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'session-btn delete-btn';
+        btnDelete.textContent = '🗑';
+        btnDelete.title = 'Eliminar';
+        btnDelete.onclick = () => deleteSessionById(s.id);
+        actions.appendChild(btnDelete);
+
+        bottom.appendChild(actions);
+        card.appendChild(bottom);
+
+        list.appendChild(card);
+    });
 }
 
 // ============================================================
@@ -122,7 +200,7 @@ function persistCurrentSession(status) {
 }
 
 // ============================================================
-// Progreso / estado / resultados
+// Progreso / Estado / Resultados
 // ============================================================
 function calculateRatio(percentage) {
     if (percentage <= 0 || percentage >= 100) return "  1 / 1.0000";
@@ -141,11 +219,30 @@ function formatDateTime(date) {
            `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function updateProgress(percentage, infoText) {
+function updateProgress(percentage, infoContent) {
     const fill = document.getElementById('progressFill');
     const info = document.getElementById('progressInfo');
-    if (fill) fill.style.width = `${Math.min(100, Math.max(0, percentage))}%`;
-    if (info) info.innerHTML = infoText;
+    
+    if (fill) {
+        if (percentage === null) {
+            fill.classList.add('indeterminate');
+            fill.style.width = '100%';
+        } else {
+            fill.classList.remove('indeterminate');
+            fill.style.width = `${Math.min(100, Math.max(0, percentage))}%`;
+        }
+    }
+    
+    if (info) {
+        if (typeof infoContent === 'string') {
+            info.innerHTML = infoContent;
+        } else if (infoContent instanceof Node) {
+            info.innerHTML = '';
+            info.appendChild(infoContent);
+        } else if (infoContent === null) {
+            info.innerHTML = '';
+        }
+    }
 }
 
 function updateStatus(status, text) {
@@ -159,10 +256,12 @@ function updateStatus(status, text) {
 function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba Exacta') {
     const section = document.getElementById('resultsSection');
     if (section) section.classList.add('visible');
+    
     const set = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
     };
+    
     set('resultAlgorithm', algName);
     set('resultIndex', primeIndex.toString());
     set('resultIndexBase64', bigIntToBase64(primeIndex));
@@ -171,7 +270,6 @@ function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba E
     set('resultTime', timeStr);
     set('resultMem', memStr);
     
-    // Guardar datos para el árbol
     const st = estado();
     st.lastResult = { prime: primeValue, index: primeIndex, exact: algName.includes('Exacta') };
     
@@ -179,7 +277,7 @@ function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba E
     if (treeBtn) treeBtn.style.display = 'block';
     
     const treeContainer = document.getElementById('treeContainer');
-    if (treeContainer) treeContainer.style.display = 'none'; // Ocultar al mostrar nuevos resultados
+    if (treeContainer) treeContainer.style.display = 'none';
 }
 
 function hideResults() {
@@ -187,6 +285,8 @@ function hideResults() {
     if (section) section.classList.remove('visible');
     const treeContainer = document.getElementById('treeContainer');
     if (treeContainer) treeContainer.style.display = 'none';
+    const treeBtn = document.getElementById('treeToggleBtn');
+    if (treeBtn) treeBtn.style.display = 'none';
 }
 
 function setButtonsEnabled(startEnabled, cancelEnabled) {
@@ -246,169 +346,36 @@ function loadSessionResults(id) {
     if (modeSelect) modeSelect.value = session.mode;
     if (inputField)  inputField.value  = session.inputValue || '';
 
-    const algLabel = session.algorithm === 'pnt' ? 'PNT' : session.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
+    let algLabel = session.algorithm === 'pnt' ? 'PNT' : session.algorithm === 'riemann' ? 'Riemann R' : 'Exacta';
+    if (session.isFallback) {
+        const origLabel = session.originalAlgorithm === 'exact' ? 'Exacta' : session.originalAlgorithm === 'riemann' ? 'Riemann R' : 'PNT';
+        algLabel = `${origLabel} → PNT (Fallback)`;
+    }
+
     const timeStr = `${(session.elapsedSeconds || 0).toFixed(2)} segundos`;
     const memStr  = `~ ${formatBytes(session.memoryBytes || 0)}`;
 
+    const st = estado();
+    st.lastSessionId = session.id;
     showResults(primeIndex, primeValue, timeStr, memStr, algLabel);
     updateStatus('completed', '✔ Completado (cargado)');
-    updateProgress(100,
-        `📋 Sesión cargada desde el historial<br>` +
-        `<b>Método:</b> ${algLabel}<br>` +
-        `Primo nº ${primeIndex.toString()} = ${primeValue.toString()}`);
-}
+    
+    const frag = document.createDocumentFragment();
+    
+    const p1 = document.createElement('div');
+    p1.textContent = '📋 Sesión cargada desde el historial';
+    frag.appendChild(p1);
+    
+    const p2 = document.createElement('div');
+    const b = document.createElement('b');
+    b.textContent = 'Método:';
+    p2.appendChild(b);
+    p2.appendChild(document.createTextNode(` ${algLabel}`));
+    frag.appendChild(p2);
+    
+    const p3 = document.createElement('div');
+    p3.textContent = `Primo nº ${primeIndex.toString()} = ${primeValue.toString()}`;
+    frag.appendChild(p3);
 
-// ============================================================
-// DIBUJO DEL ÁRBOL (Canvas)
-// ============================================================
-const NODE_WIDTH = 140;
-const NODE_HEIGHT = 50;
-const H_GAP = 24;
-const V_GAP = 50;
-
-function toggleTree() {
-    const container = document.getElementById('treeContainer');
-    const canvas = document.getElementById('treeCanvas');
-    if (!container || !canvas) return;
-    
-    if (container.style.display === 'block') {
-        container.style.display = 'none';
-        return;
-    }
-    
-    const st = estado();
-    if (!st.lastResult) {
-        notificar('No hay resultados para mostrar.', 'warn');
-        return;
-    }
-    
-    const { prime, index, exact } = st.lastResult;
-    
-    // Construir árbol
-    const root = buildTree(index, 'Index', 0);
-    const primeNode = { 
-        val: prime, 
-        type: 'Prime', 
-        approx: !exact, 
-        children: [root], 
-        depth: 0 
-    };
-    
-    // Calcular layout
-    layoutTree(primeNode, 0, 50);
-    
-    let maxDepth = 0;
-    function getMaxDepth(n) {
-        maxDepth = Math.max(maxDepth, n.depth);
-        n.children.forEach(getMaxDepth);
-    }
-    getMaxDepth(primeNode);
-    
-    const totalWidth = Math.max(primeNode.width + 100, 600);
-    const totalHeight = (maxDepth + 1) * (NODE_HEIGHT + V_GAP) + 50;
-    
-    canvas.width = totalWidth;
-    canvas.height = totalHeight;
-    
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawTree(ctx, primeNode);
-    
-    container.style.display = 'block';
-}
-
-function buildTree(val, type, depth) {
-    const node = { val, type, approx: false, children: [], depth: depth };
-    if (depth > 15) {
-        node.type = 'End';
-        return node;
-    }
-    
-    if (type === 'Prime') {
-        const { val: idx, approx } = getPrimeIndexSync(val);
-        node.approx = approx;
-        if (idx > 0n) {
-            node.children.push(buildTree(idx, 'Index', depth + 1));
-        }
-    } else if (type === 'Index') {
-        if (val === 1n) {
-            node.type = 'End';
-        } else if (millerRabin(val, 5)) {
-            node.children.push(buildTree(val, 'Prime', depth + 1));
-        } else {
-            const factors = factorize(val);
-            const uniqueFactors = [...new Set(factors.map(f => f.toString()))].map(f => BigInt(f));
-            for (const f of uniqueFactors) {
-                node.children.push(buildTree(f, 'Prime', depth + 1));
-            }
-        }
-    }
-    return node;
-}
-
-function layoutTree(node, depth, leftBound) {
-    node.depth = depth;
-    node.y = depth * (NODE_HEIGHT + V_GAP);
-    
-    if (node.children.length === 0) {
-        node.x = leftBound;
-        node.width = NODE_WIDTH;
-        return NODE_WIDTH;
-    }
-    
-    let currentX = leftBound;
-    let childrenWidth = 0;
-    
-    for (const child of node.children) {
-        const w = layoutTree(child, depth + 1, currentX);
-        currentX += w + H_GAP;
-        childrenWidth += w + H_GAP;
-    }
-    
-    childrenWidth -= H_GAP;
-    node.width = childrenWidth;
-    node.x = leftBound + (childrenWidth - NODE_WIDTH) / 2;
-    
-    return childrenWidth;
-}
-
-function drawTree(ctx, node) {
-    ctx.strokeStyle = '#4f8cf7';
-    ctx.lineWidth = 2;
-    for (const child of node.children) {
-        ctx.beginPath();
-        ctx.moveTo(node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT);
-        ctx.lineTo(child.x + NODE_WIDTH / 2, child.y);
-        ctx.stroke();
-        drawTree(ctx, child);
-    }
-    
-    ctx.fillStyle = node.type === 'Prime' ? '#1e3a5f' : node.type === 'Index' ? '#4a3a20' : '#2a3a55';
-    ctx.strokeStyle = node.type === 'Prime' ? '#60a5fa' : node.type === 'Index' ? '#fbbf24' : '#94a3b8';
-    ctx.lineWidth = 2;
-    
-    ctx.beginPath();
-    ctx.roundRect(node.x, node.y, NODE_WIDTH, NODE_HEIGHT, 6);
-    ctx.fill();
-    ctx.stroke();
-    
-    ctx.fillStyle = '#e0e7f0';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    let text = node.val.toString();
-    if (node.approx) text = '~' + text;
-    
-    if (text.length > 15) {
-        text = text.slice(0, 7) + '...' + text.slice(-5);
-    }
-    
-    ctx.fillText(text, node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT / 2 - 8);
-    
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = '#8899b0';
-    let typeStr = node.type === 'Prime' ? 'Primo' : node.type === 'Index' ? 'Índice' : 'Fin';
-    if (node.approx) typeStr += ' (aprox)';
-    ctx.fillText(typeStr, node.x + NODE_WIDTH / 2, node.y + NODE_HEIGHT / 2 + 8);
+    updateProgress(100, frag);
 }
