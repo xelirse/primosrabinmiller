@@ -74,7 +74,7 @@ iprimo/
 | Modo | Entrada | Devuelve |
 |---|---|---|
 | **Índice decimal** | `1000000` | el primo nº 1,000,000 |
-| **Índice en Base64** | `F4240` | el primo cuyo índice es `1000000` |
+| **Índice en Base64** | `F4240` | el primo cuyo índice es `98790964` (en decimal) |
 | **Valor del primo en Decimal** | `15485863` | el índice de ese primo |
 | **Valor del primo en Base64** | `7sTHe` | el índice de ese primo |
 
