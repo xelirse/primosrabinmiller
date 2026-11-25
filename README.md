@@ -2,7 +2,7 @@
 
 Aplicación web orientada a la búsqueda, cálculo y visualización de números primos desde el navegador. Utiliza algoritmos de teoría de números, soporte nativo para `BigInt`, un motor de precisión decimal propio (`BigFloat`) y un sistema de persistencia de sesiones para procesos de larga duración.
 
-![Captura de pantalla de la aplicación](screenshot/Captura%20de%20pantalla%20de%202026-11-23%2019-31-23.png)
+![Captura de pantalla de la aplicación](screenshot/2026-11-25_17-40.png)
 
 ## ✨ Características Principales
 
@@ -11,10 +11,10 @@ Aplicación web orientada a la búsqueda, cálculo y visualización de números 
   * **Aprox. Riemann R:** Estimación analítica usando la función R de Riemann y su inversa.
   * **Aprox. PNT:** Estimación basada en el Teorema de los Números Primos.
 * **🧮 Motor `BigFloat` de 46 Decimales:** Las aproximaciones PNT y Riemann R implementan aritmética de punto fijo en `BigInt` escalada a $10^{46}$ para calcular logaritmos, raíces y series sin depender del límite de precisión de los números flotantes nativos de JavaScript.
-* **🌳 Visualización de Árbol (Canvas):** Un botón en los resultados despliega un lienzo interactivo (con zoom y desplazamiento) que dibuja el árbol genealógico del primo encontrado. Muestra el primo, su índice, la factorización del índice y recursivamente los índices de sus factores hasta llegar a 1, alineando horizontalmente los valores iguales y separando conectores y filas.
+* **🌳 Visualización de Árbol y Gráfico Circular (Canvas):** Un botón en los resultados despliega un lienzo interactivo (con zoom y desplazamiento) para ver el árbol genealógico del primo encontrado o alternar a una vista circular con flechas y burbujas exteriores para valores largos. Muestra el primo, su índice, la factorización del índice y recursivamente los índices de sus factores hasta llegar a 1, además de listar los factores primos y compuestos en los resultados.
 * **🛡️ Verificación de Primalidad:** Utiliza el test de **Miller-Rabin** con 12 bases fijas en las búsquedas y verificaciones principales.
 * **🧠 Límite de Memoria y Fallback:** Si la Criba Exacta supera el límite de memoria configurado para los primos base, intercepta el error y aplica un fallback mediante PNT ajustado al primo siguiente.
-* **📊 Resultados Completos:** Cada búsqueda muestra siete datos en un grid adaptable:
+* **📊 Resultados Completos:** Cada búsqueda muestra siete datos principales en un grid adaptable, más los factores primos y compuestos cuando se genera o carga el árbol:
   * **Método / Algoritmo** (Criba Exacta, PNT, Riemann R o PNT Fallback).
   * **Primo número (índice)** en decimal.
   * **Primo número (índice) en Base64**.
@@ -44,7 +44,8 @@ iprimo/
     ├── math.js       ← BigInt ↔ Base64, Miller-Rabin, factorización, cribas, Riemann R
     ├── sessions.js   ← localStorage, importación / exportación JSON
     ├── ui.js         ← render de sesiones, progreso, resultados y carga de sesiones
-    ├── tree.js       ← construcción del árbol, layout y dibujo en Canvas
+    ├── tree.js       ← construcción del árbol, layout tradicional, zoom/pan y toggle de vista
+    ├── circle.js     ← vista circular con flechas y burbujas exteriores en Canvas
     ├── search.js     ← findNthPrime, findIndexByPrime
     ├── app.js        ← startSearch, cancelSearch, ruteo de algoritmos y fallback
     └── main.js       ← programa() + llamada de arranque
@@ -68,7 +69,7 @@ iprimo/
 2. No requiere instalación de paquetes ni servidor de compilación.
 3. Abre `iprimo.html` en un navegador web moderno.
 4. Selecciona el modo de búsqueda, el algoritmo (`Criba Exacta`, `Aprox. PNT` o `Aprox. Riemann R`), ingresa un valor y presiona **🚀 Buscar**.
-5. Cuando haya un resultado visible, presiona **🌳 Ver Árbol** para generar y visualizar su árbol.
+5. Cuando haya un resultado visible, presiona **🌳 Ver Árbol** para generar y visualizar su árbol (y usa **Ver como Círculo** si deseas cambiar a la vista circular).
 
 ### Modos de búsqueda
 

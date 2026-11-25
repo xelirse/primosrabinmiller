@@ -253,7 +253,71 @@ function updateStatus(status, text) {
     }
 }
 
-function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba Exacta') {
+// Extrae y muestra los factores primos y números compuestos del árbol
+function updateTreeFactorsUI(treeData) {
+    const grid = document.querySelector('.results-grid');
+    if (!grid) return;
+    
+    let primeItem = document.getElementById('resultTreePrimes');
+    if (!primeItem) {
+        primeItem = document.createElement('div');
+        primeItem.className = 'result-item';
+        primeItem.id = 'resultTreePrimes';
+        primeItem.innerHTML = '<div class="result-label">FACTORES PRIMOS</div><div class="result-value" id="resultPrimesValue" style="color: #60a5fa;"></div>';
+        grid.appendChild(primeItem);
+    }
+    
+    let compItem = document.getElementById('resultTreeComposites');
+    if (!compItem) {
+        compItem = document.createElement('div');
+        compItem.className = 'result-item';
+        compItem.id = 'resultTreeComposites';
+        compItem.innerHTML = '<div class="result-label">FACTORES COMPUESTOS</div><div class="result-value" id="resultCompositesValue" style="color: #fbbf24;"></div>';
+        grid.appendChild(compItem);
+    }
+    
+    const pVal = document.getElementById('resultPrimesValue');
+    const cVal = document.getElementById('resultCompositesValue');
+    
+    if (!treeData) {
+        pVal.textContent = 'Genere o cargue el árbol para ver los factores.';
+        cVal.textContent = 'Genere o cargue el árbol para ver los factores.';
+        return;
+    }
+    
+    const primes = new Set();
+    const composites = new Set();
+    
+    function traverse(node) {
+        if (!node) return;
+        const valStr = node.textStr.replace('~', '');
+        if (node.type === 'Prime' || node.type === 'PrimeIndex') {
+            primes.add(valStr);
+        } else if (node.type === 'Index') {
+            composites.add(valStr);
+        }
+        for (let i = 0; i < node.children.length; i++) {
+            traverse(node.children[i]);
+        }
+    }
+    
+    traverse(treeData);
+    
+    // Función auxiliar para ordenar BigInts de mayor a menor
+    const sortDesc = (a, b) => {
+        const bigA = BigInt(a);
+        const bigB = BigInt(b);
+        return bigB > bigA ? 1 : (bigB < bigA ? -1 : 0);
+    };
+
+    const sortedPrimes = Array.from(primes).sort(sortDesc);
+    const sortedComposites = Array.from(composites).sort(sortDesc);
+
+    pVal.textContent = sortedPrimes.length > 0 ? sortedPrimes.join(' ') : 'Ninguno';
+    cVal.textContent = sortedComposites.length > 0 ? sortedComposites.join(' ') : 'Ninguno';
+}
+
+function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba Exacta', exactIndex = true, exactPrime = true) {
     const section = document.getElementById('resultsSection');
     if (section) section.classList.add('visible');
     
@@ -271,7 +335,10 @@ function showResults(primeIndex, primeValue, timeStr, memStr, algName = 'Criba E
     set('resultMem', memStr);
     
     const st = estado();
-    st.lastResult = { prime: primeValue, index: primeIndex, exact: algName.includes('Exacta') };
+    st.lastResult = { prime: primeValue, index: primeIndex, exactIndex, exactPrime };
+    
+    // Resetear los factores al mostrar nuevos resultados
+    updateTreeFactorsUI(null);
     
     const treeBtn = document.getElementById('treeToggleBtn');
     if (treeBtn) treeBtn.style.display = 'block';
@@ -355,9 +422,16 @@ function loadSessionResults(id) {
     const timeStr = `${(session.elapsedSeconds || 0).toFixed(2)} segundos`;
     const memStr  = `~ ${formatBytes(session.memoryBytes || 0)}`;
 
+    const isExact = session.algorithm === 'exact';
+    let exactIndex = true, exactPrime = true;
+    if (!isExact) {
+        if (isIndexMode) exactPrime = false;
+        else exactIndex = false;
+    }
+
     const st = estado();
     st.lastSessionId = session.id;
-    showResults(primeIndex, primeValue, timeStr, memStr, algLabel);
+    showResults(primeIndex, primeValue, timeStr, memStr, algLabel, exactIndex, exactPrime);
     updateStatus('completed', '✔ Completado (cargado)');
     
     const frag = document.createDocumentFragment();
@@ -378,4 +452,16 @@ function loadSessionResults(id) {
     frag.appendChild(p3);
 
     updateProgress(100, frag);
+
+    // Si la sesión ya tiene un árbol guardado, actualizamos las filas de factores
+    if (session.treeData) {
+        const primeNode = {
+            type: 'Prime',
+            approx: !isExact,
+            children: [session.treeData],
+            depth: 0,
+            textStr: (!isExact ? '~' : '') + primeValue.toString()
+        };
+        updateTreeFactorsUI(primeNode);
+    }
 }

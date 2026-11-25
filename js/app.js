@@ -48,6 +48,8 @@ async function offerInterruptedResume() {
 // ============================================================
 // MANEJADOR PRINCIPAL
 // ============================================================
+// Busca en app.js la función startSearch y reemplázala completa:
+
 async function startSearch(resumeSessionObj = null) {
     const st = estado();
     if (st.isRunning) return;
@@ -178,7 +180,7 @@ async function startSearch(resumeSessionObj = null) {
                 }
                 // Forzar a que sea un primo real buscando el siguiente
                 estBigInt = nextPrime(estBigInt);
-                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algName);
+                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algName, true, false);
             } else {
                 if (algorithm === 'riemann') {
                     estBigInt = riemannR(targetPrime);
@@ -189,7 +191,7 @@ async function startSearch(resumeSessionObj = null) {
                 }
                 // Forzar a que sea un primo real
                 estBigInt = nextPrime(estBigInt);
-                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algName);
+                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algName, false, true);
             }
             
             updateStatus('completed', `✔ Estimado (${algName})`);
@@ -218,7 +220,7 @@ async function startSearch(resumeSessionObj = null) {
             if (result && result.nthPrime > 0n) {
                 const timeStr = `${result.elapsedSeconds.toFixed(2)} segundos`;
                 const memStr = `~ ${formatBytes(result.memoryBytes)}`;
-                showResults(targetIndex, result.nthPrime, timeStr, memStr, algExact);
+                showResults(targetIndex, result.nthPrime, timeStr, memStr, algExact, true, true);
                 updateStatus('completed', '✔ Completado');
                 updateProgress(100, `<b>Método:</b> ${algExact}<br>✅ Primo nº ${targetIndex.toString()} = ${result.nthPrime.toString()}`);
 
@@ -247,7 +249,7 @@ async function startSearch(resumeSessionObj = null) {
                 if (result && result.primeIndex > 0n) {
                     const timeStr = `${result.elapsedSeconds.toFixed(2)} segundos`;
                     const memStr = `~ ${formatBytes(result.memoryBytes)}`;
-                    showResults(result.primeIndex, targetPrime, timeStr, memStr, algExact);
+                    showResults(result.primeIndex, targetPrime, timeStr, memStr, algExact, true, true);
                     updateStatus('completed', '✔ Completado');
                     updateProgress(100, `<b>Método:</b> ${algExact}<br>✅ El primo ${targetPrime.toString()} es el nº ${result.primeIndex.toString()}`);
 
@@ -283,7 +285,7 @@ async function startSearch(resumeSessionObj = null) {
                 // Forzar a que sea un primo real
                 estBigInt = nextPrime(estBigInt);
 
-                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algFallback);
+                showResults(targetIndex, estBigInt, "Aproximación instantánea", "~ 0 MB", algFallback, true, false);
                 updateStatus('completed', '✔ Estimado (PNT)');
                 updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT y se ajustó al primo real más cercano.`);
                 
@@ -305,7 +307,7 @@ async function startSearch(resumeSessionObj = null) {
                 // Forzar a que sea un primo real
                 estBigInt = nextPrime(estBigInt);
 
-                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algFallback);
+                showResults(estBigInt, targetPrime, "Aproximación instantánea", "~ 0 MB", algFallback, false, true);
                 updateStatus('completed', '✔ Estimado (PNT)');
                 updateProgress(100, `<b>Método:</b> ${algFallback}<br>⚠️ Límite de memoria excedido. Se usó PNT y se ajustó al primo real más cercano.`);
                 

@@ -1,6 +1,4 @@
-// ============================================================
-// DIBUJO DEL ÁRBOL (Canvas)
-// ============================================================
+// Return layout spacing configuration for the tree canvas
 function getTreeLayoutConfig() {
 	if (!getTreeLayoutConfig._v) {
 		getTreeLayoutConfig._v = {
@@ -11,7 +9,7 @@ function getTreeLayoutConfig() {
 	return getTreeLayoutConfig._v;
 }
 
-// Toggle tree container visibility and render the genealogy tree on canvas
+// Toggle tree container visibility and render the genealogy tree or circular graph
 async function toggleTree() {
 	var container = document.getElementById('treeContainer');
 	var canvas = document.getElementById('treeCanvas');
@@ -31,9 +29,69 @@ async function toggleTree() {
 		return;
 	}
 
+	if (!document.getElementById('circularViewCheckbox')) {
+		var wrapper = document.createElement('div');
+		wrapper.style.display = 'inline-flex';
+		wrapper.style.alignItems = 'center';
+		wrapper.style.gap = '6px';
+		wrapper.style.marginRight = '10px';
+
+		var cb = document.createElement('input');
+		cb.type = 'checkbox';
+		cb.id = 'circularViewCheckbox';
+		cb.style.cursor = 'pointer';
+
+		cb.onchange = function () {
+			if (document.getElementById('treeContainer').style.display === 'block') {
+				var st2 = estado();
+				st2.isCircularView = cb.checked;
+				var canvas2 = document.getElementById('treeCanvas');
+				var ctx2 = canvas2.getContext('2d');
+
+				if (st2.isCircularView) {
+					drawCircularGraph(ctx2, st2.lastTreeRoot);
+					var viewport = document.getElementById('treeViewport');
+					if (viewport && canvas2.width > 0) {
+						var z = getTreeZoomState();
+						var scaleX = viewport.clientWidth / canvas2.width;
+						var scaleY = viewport.clientHeight / canvas2.height;
+						z.scale = Math.min(scaleX, scaleY) * 0.9;
+						z.panX = (viewport.clientWidth - canvas2.width * z.scale) / 2;
+						z.panY = (viewport.clientHeight - canvas2.height * z.scale) / 2;
+						applyTreeTransform();
+					}
+				} else {
+					var dims = computeLayout(st2.lastTreeRoot);
+					canvas2.width = dims.totalWidth;
+					canvas2.height = dims.totalHeight;
+					ctx2.clearRect(0, 0, canvas2.width, canvas2.height);
+					drawTree(ctx2, st2.lastTreeRoot);
+					resetTreeZoom();
+				}
+			}
+		};
+
+		var label = document.createElement('label');
+		label.htmlFor = 'circularViewCheckbox';
+		label.textContent = 'Ver como Círculo';
+		label.style.fontSize = '0.8rem';
+		label.style.color = 'var(--text)';
+		label.style.cursor = 'pointer';
+
+		wrapper.appendChild(cb);
+		wrapper.appendChild(label);
+
+		treeBtn.parentNode.insertBefore(wrapper, treeBtn);
+	}
+
+	var isCircular = document.getElementById('circularViewCheckbox').checked;
+	st.isCircularView = isCircular;
+
 	var prime = st.lastResult.prime;
 	var index = st.lastResult.index;
-	var exact = st.lastResult.exact;
+
+	var exactIndex = st.lastResult.exactIndex !== undefined ? st.lastResult.exactIndex : st.lastResult.exact;
+	var exactPrime = st.lastResult.exactPrime !== undefined ? st.lastResult.exactPrime : st.lastResult.exact;
 
 	var session = st.lastSessionId ? loadSessions().find(function (s) {
 		return s.id === st.lastSessionId;
@@ -70,7 +128,7 @@ async function toggleTree() {
 		});
 
 		try {
-			root = await buildTree(index, 'Index', 0, !exact);
+			root = await buildTree(index, 'Index', 0, !exactIndex);
 			if (session) {
 				session.treeData = root;
 				upsertSession(session);
@@ -96,35 +154,54 @@ async function toggleTree() {
 	try {
 		var primeNode = {
 			type: 'Prime',
-			approx: !exact,
+			approx: !exactPrime,
 			children: [root],
 			depth: 0,
-			textStr: (!exact ? '~' : '') + prime.toString()
+			textStr: (!exactPrime ? '~' : '') + prime.toString()
 		};
 
 		st.lastTreeRoot = primeNode;
-
-		var dims = computeLayout(primeNode);
-
-		canvas.width = dims.totalWidth;
-		canvas.height = dims.totalHeight;
+		updateTreeFactorsUI(primeNode);
 
 		var ctx = canvas.getContext('2d');
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+		if (isCircular) {
+			drawCircularGraph(ctx, primeNode);
+		} else {
+			var dims = computeLayout(primeNode);
+			canvas.width = dims.totalWidth;
+			canvas.height = dims.totalHeight;
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			drawTree(ctx, primeNode);
+		}
 
 		container.style.display = 'block';
-		resetTreeZoom();
+
+		if (isCircular) {
+			var viewport = document.getElementById('treeViewport');
+			if (viewport && canvas.width > 0) {
+				var z = getTreeZoomState();
+				var scaleX = viewport.clientWidth / canvas.width;
+				var scaleY = viewport.clientHeight / canvas.height;
+				z.scale = Math.min(scaleX, scaleY) * 0.9;
+				z.panX = (viewport.clientWidth - canvas.width * z.scale) / 2;
+				z.panY = (viewport.clientHeight - canvas.height * z.scale) / 2;
+				applyTreeTransform();
+			}
+		} else {
+			resetTreeZoom();
+		}
 
 		var doneFrag = document.createDocumentFragment();
 		var doneSpan = document.createElement('span');
-		doneSpan.textContent = '✅ Árbol generado y guardado con éxito.';
+		doneSpan.textContent = '✅ Gráfico generado y guardado con éxito.';
 		doneFrag.appendChild(doneSpan);
 		updateProgress(100, doneFrag);
 
 		updateStatus('completed', '✔ Completado');
 	} catch (err) {
 		console.error(err);
-		notificar('Error al dibujar el árbol.', 'error');
+		notificar('Error al dibujar el gráfico.', 'error');
 	} finally {
 		treeBtn.disabled = false;
 		treeBtn.textContent = '🌳 Ver Árbol';
@@ -132,6 +209,7 @@ async function toggleTree() {
 	}
 }
 
+// Build genealogy tree recursively from a prime or index value
 async function buildTree(val, type, depth, isApprox) {
 	if (isApprox === undefined) isApprox = false;
 	var node = {
@@ -141,11 +219,6 @@ async function buildTree(val, type, depth, isApprox) {
 		depth: depth,
 		textStr: (isApprox ? '~' : '') + val.toString()
 	};
-
-	if (depth > 15) {
-		node.type = 'End';
-		return node;
-	}
 
 	if (type === 'Prime') {
 		var frag = document.createDocumentFragment();
@@ -309,7 +382,7 @@ async function buildTree(val, type, depth, isApprox) {
 	return node;
 }
 
-// Draw horizontal segment while hopping over vertical segments
+// Draw horizontal bus segment while hopping over vertical connectors
 function drawHoppingHorizontal(ctx, x1, x2, y, verticalSegments, hopRadius) {
 	if (Math.abs(x2 - x1) < 0.5) return;
 	var dir = x2 > x1 ? 1 : -1;
@@ -366,7 +439,7 @@ function drawHoppingHorizontal(ctx, x1, x2, y, verticalSegments, hopRadius) {
 	ctx.lineTo(end, y);
 }
 
-// Return edge color matching the parent bubble type
+// Return edge color matching the parent node type
 function getEdgeColor(type) {
 	if (type === 'Prime') return 'rgba(96, 165, 250, 0.96)';
 	if (type === 'Index') return 'rgba(251, 191, 36, 0.96)';
@@ -399,7 +472,7 @@ function collectSubtreeRowBounds(node, boundsByRow) {
 	}
 }
 
-// Assign row coordinates by shared numeric value so equal numbers align horizontally
+// Assign row coordinates by numeric rank so equal numbers align horizontally
 function collectTreeNodes(node, rankOf, nodeHeight, vGap, margin, allNodes, byLevel) {
 	var rowIndex = rankOf.get(node.textStr.replace('~', ''));
 	node.nodeWidth = Math.max(76, node.textStr.length * 7 + 16);
@@ -413,7 +486,7 @@ function collectTreeNodes(node, rankOf, nodeHeight, vGap, margin, allNodes, byLe
 	}
 }
 
-// Flag any bubble that still overlaps another bubble after layout
+// Mark bubbles that overlap after layout passes
 function markOverlappingBubbles(allNodes) {
 	for (var i = 0; i < allNodes.length; i++) {
 		allNodes[i].colliding = false;
@@ -445,7 +518,7 @@ function measureTreeSubtree(node, hGap) {
 	return node.subtreeWidth;
 }
 
-// Offset overlapping vertical segments that share the same X and Y range
+// Offset vertical segments that overlap in X and Y
 function separateCollinearVerticals(verticalSegments) {
 	var laneOffset = 4;
 	for (var i = 0; i < verticalSegments.length; i++) {
@@ -467,7 +540,7 @@ function separateCollinearVerticals(verticalSegments) {
 	}
 }
 
-// Ensure parent and children do not share the same horizontal row
+// Push descendant rows below parent rows so edges flow downward
 function separateParentChildRows(node, rankOf) {
 	var pKey = node.textStr.replace('~', '');
 	var pRank = rankOf.get(pKey);
@@ -483,7 +556,7 @@ function separateParentChildRows(node, rankOf) {
 	}
 }
 
-// Shift a node and its descendants horizontally together
+// Shift a node and its descendants horizontally by dx
 function shiftTreeSubtree(node, dx) {
 	if (Math.abs(dx) < 0.001) return;
 	node.x += dx;
@@ -492,7 +565,7 @@ function shiftTreeSubtree(node, dx) {
 	}
 }
 
-// Position parent and pack children compactly beneath it
+// Position parent and pack child subtrees beneath it
 function layoutTreeNode(node, centerX, hGap) {
 	node.x = centerX - node.nodeWidth / 2;
 
@@ -519,7 +592,6 @@ function layoutTreeNode(node, centerX, hGap) {
 		cursorLeft += child.subtreeWidth + hGap;
 	}
 
-	// Pack adjacent child subtrees as tightly as row occupancy allows
 	for (var idx = 1; idx < k; idx++) {
 		var prevChild = node.children[idx - 1];
 		var curChild = node.children[idx];
@@ -529,7 +601,6 @@ function layoutTreeNode(node, centerX, hGap) {
 		}
 	}
 
-	// Center parent over its children span
 	var minChildLeft = Infinity;
 	var maxChildRight = -Infinity;
 	for (var cIdx = 0; cIdx < k; cIdx++) {
@@ -541,7 +612,7 @@ function layoutTreeNode(node, centerX, hGap) {
 	node.x = actualCenter - node.nodeWidth / 2;
 }
 
-// Resolve 2D collisions across all nodes so bubbles do not share the same spot
+// Resolve 2D collisions across all bubbles
 function resolveAllBubbleCollisions(allNodes, hGap) {
 	for (var pass = 0; pass < 25; pass++) {
 		var anyMoved = false;
@@ -564,7 +635,7 @@ function resolveAllBubbleCollisions(allNodes, hGap) {
 	}
 }
 
-// Resolve horizontal overlaps per row so no two nodes ever collide
+// Resolve horizontal overlaps per row
 function resolveRowCollisions(byLevel, hGap) {
 	for (var pass = 0; pass < 8; pass++) {
 		var moved = false;
@@ -587,7 +658,7 @@ function resolveRowCollisions(byLevel, hGap) {
 	}
 }
 
-// Compute minimum horizontal shift so rightSubtree does not share X range with leftSubtree
+// Compute minimum shift between adjacent subtrees
 function computeCompactSubtreeShift(leftSubtree, rightSubtree, hGap) {
 	var leftBounds = new Map();
 	var rightBounds = new Map();
@@ -611,7 +682,7 @@ function computeCompactSubtreeShift(leftSubtree, rightSubtree, hGap) {
 	return (leftMaxX + hGap) - rightMinX;
 }
 
-// Compute full node layout and canvas dimensions
+// Compute full traditional tree layout and canvas dimensions
 function computeLayout(root) {
 	var cfg = getTreeLayoutConfig();
 	var hGap = Math.max(14, Math.min(28, cfg.H_GAP));
@@ -635,7 +706,6 @@ function computeLayout(root) {
 
 	separateParentChildRows(root, rankOf);
 
-	// Compact ranks so there are no empty row gaps
 	var usedRanks = Array.from(new Set(Array.from(rankOf.values()))).sort(function (a, b) {
 		return a - b;
 	});
@@ -677,7 +747,7 @@ function computeLayout(root) {
 	return { totalWidth: totalWidth, totalHeight: totalHeight };
 }
 
-// Group parent nodes by row Y to stagger horizontal buses cleanly
+// Group parent nodes by row Y to stagger horizontal buses
 function gatherTreeEdges(node, edgesByRow) {
 	if (!node.children || node.children.length === 0) return;
 	var rowKey = node.y;
@@ -688,20 +758,7 @@ function gatherTreeEdges(node, edgesByRow) {
 	}
 }
 
-// Collect all vertical connector segments across the entire tree
-function collectAllVerticalSegments(busPlan, verticalSegments) {
-	for (var i = 0; i < busPlan.length; i++) {
-		var item = busPlan[i];
-		verticalSegments.push({ x: item.startX, yTop: item.bottomY, yBottom: item.busY });
-		for (var j = 0; j < item.parent.children.length; j++) {
-			var child = item.parent.children[j];
-			var cx = child.x + child.nodeWidth / 2;
-			verticalSegments.push({ x: cx, yTop: item.busY, yBottom: child.y });
-		}
-	}
-}
-
-// Draw all tree bubbles above connectors
+// Draw all tree bubbles above connector lines
 function drawTreeNodes(ctx, node) {
 	var bgColor = '#2a3a55';
 	var borderColor = '#94a3b8';
@@ -756,7 +813,7 @@ function drawTreeNodes(ctx, node) {
 	}
 }
 
-// Draw full tree edges and nodes on canvas
+// Draw traditional tree connectors and nodes on canvas
 function drawTree(ctx, root) {
 	var z = getTreeZoomState();
 	var scale = z && z.scale ? z.scale : 1;
@@ -849,17 +906,22 @@ function drawTree(ctx, root) {
 	drawTreeNodes(ctx, root);
 }
 
-// Redraw active tree when zoom scale changes
+// Redraw active graph when zoom scale changes
 function redrawTreeForZoom() {
 	var st = estado();
 	var canvas = document.getElementById('treeCanvas');
 	if (!canvas || !st.lastTreeRoot) return;
 	var ctx = canvas.getContext('2d');
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	drawTree(ctx, st.lastTreeRoot);
+
+	if (st.isCircularView) {
+		drawCircularGraph(ctx, st.lastTreeRoot);
+	} else {
+		drawTree(ctx, st.lastTreeRoot);
+	}
 }
 
-// Return current zoom state object stored on estado()
+// Return zoom and pan state stored on estado()
 function getTreeZoomState() {
 	var st = estado();
 	if (!st.treeZoom) {
@@ -875,7 +937,7 @@ function getTreeZoomState() {
 	return st.treeZoom;
 }
 
-// Apply current zoom scale and pan offset to the canvas
+// Apply CSS transform and zoom label to the canvas
 function applyTreeTransform() {
 	var canvas = document.getElementById('treeCanvas');
 	var label = document.getElementById('treeZoomLabel');
@@ -889,7 +951,7 @@ function applyTreeTransform() {
 	redrawTreeForZoom();
 }
 
-// Check whether two bubble boxes overlap including horizontal margin
+// Check whether two rectangular bubble boxes overlap
 function areBubblesOverlapping(a, b, hGap) {
 	var padX = (typeof hGap === 'number' ? hGap : 12) * 0.5;
 	var aLeft = a.x - padX;
@@ -907,7 +969,7 @@ function areBubblesOverlapping(a, b, hGap) {
 	return overlapX && overlapY;
 }
 
-// Adjust zoom level by a multiplier factor around an optional viewport point
+// Zoom around an optional viewport point
 function zoomTree(factor, clientX, clientY) {
 	var z = getTreeZoomState();
 	var viewport = document.getElementById('treeViewport');
@@ -929,7 +991,7 @@ function zoomTree(factor, clientX, clientY) {
 	applyTreeTransform();
 }
 
-// Reset zoom level and pan position to fit from top-left
+// Reset zoom scale and pan position to default
 function resetTreeZoom() {
 	var z = getTreeZoomState();
 	z.scale = 1;
@@ -938,14 +1000,14 @@ function resetTreeZoom() {
 	applyTreeTransform();
 }
 
-// Zoom in or out using mouse wheel
+// Zoom with mouse wheel inside the viewport
 function handleTreeWheel(event) {
 	event.preventDefault();
 	var factor = event.deltaY < 0 ? 1.15 : 0.85;
 	zoomTree(factor, event.clientX, event.clientY);
 }
 
-// Start dragging the canvas inside the viewport
+// Begin pan drag on the canvas
 function startTreePan(event) {
 	var z = getTreeZoomState();
 	z.dragging = true;
@@ -966,13 +1028,13 @@ function moveTreePan(event) {
 	applyTreeTransform();
 }
 
-// Stop dragging the canvas
+// Finish pan drag on the canvas
 function endTreePan() {
 	var z = getTreeZoomState();
 	z.dragging = false;
 }
 
-// Return canvas lineWidth that renders at least minScreenPx in screen pixels
+// Compute minimum line width in world units for a target screen pixel size
 function getMinScreenLineWidth(scale, minScreenPx) {
 	var safeScale = (scale && scale > 0) ? scale : 1;
 	var minPx = (typeof minScreenPx === 'number' && minScreenPx > 0) ? minScreenPx : 1;
