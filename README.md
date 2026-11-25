@@ -60,11 +60,9 @@ iprimo/
 
 ## 🚀 Cómo usar
 
-1. Clona este repositorio en tu máquina local:
+1. Clona este repositorio en tu máquina local ejecutando:
 
-   ```bash
-   git clone [https://github.com/xelirse/primosrabinmiller.git](https://github.com/xelirse/primosrabinmiller.git)
-   ```
+   `git clone https://github.com/xelirse/primosrabinmiller.git`
 
 2. No requiere instalación de paquetes ni servidor de compilación.
 3. Abre `iprimo.html` en un navegador web moderno.
